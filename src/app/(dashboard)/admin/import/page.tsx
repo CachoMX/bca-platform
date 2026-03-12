@@ -277,7 +277,7 @@ export default function ImportPage() {
                         ? 'var(--accent)'
                         : 'var(--bg-secondary)',
                     color:
-                      idx <= currentStepIndex ? '#0a0a12' : 'var(--text-muted)',
+                      idx <= currentStepIndex ? 'var(--accent-contrast)' : 'var(--text-muted)',
                   }}
                 >
                   {s.number}
@@ -319,7 +319,7 @@ export default function ImportPage() {
                 }`}
                 style={{
                   backgroundColor: dragOver
-                    ? 'rgba(0, 212, 255, 0.05)'
+                    ? 'var(--accent-subtle)'
                     : 'transparent',
                 }}
                 onDragOver={(e) => {
@@ -331,9 +331,9 @@ export default function ImportPage() {
               >
                 <div
                   className="mb-4 flex h-16 w-16 items-center justify-center rounded-xl"
-                  style={{ backgroundColor: 'rgba(0, 212, 255, 0.1)' }}
+                  style={{ backgroundColor: 'var(--accent-subtle)' }}
                 >
-                  <Upload className="h-8 w-8" style={{ color: '#00d4ff' }} />
+                  <Upload className="h-8 w-8" style={{ color: 'var(--accent)' }} />
                 </div>
                 <p
                   className="mb-1 text-base font-medium"

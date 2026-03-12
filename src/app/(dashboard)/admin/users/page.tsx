@@ -304,9 +304,9 @@ export default function UsersPage() {
             <CardContent className="flex flex-col items-center justify-center py-16">
               <div
                 className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl"
-                style={{ backgroundColor: 'rgba(0, 212, 255, 0.1)' }}
+                style={{ backgroundColor: 'var(--accent-subtle)' }}
               >
-                <Users className="h-7 w-7" style={{ color: '#00d4ff' }} />
+                <Users className="h-7 w-7" style={{ color: 'var(--accent)' }} />
               </div>
               <p
                 className="mb-1 text-base font-medium"
@@ -344,7 +344,7 @@ export default function UsersPage() {
                     style={{
                       backgroundColor: 'var(--accent-subtle)',
                       color: 'var(--accent)',
-                      border: '1px solid rgba(0, 212, 255, 0.2)',
+                      border: '1px solid var(--accent-subtle)',
                     }}
                   >
                     {user.name[0]}

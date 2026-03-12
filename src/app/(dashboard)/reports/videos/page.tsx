@@ -113,9 +113,9 @@ export default function VideoReportsPage() {
             <CardContent className="flex flex-col items-center justify-center py-16">
               <div
                 className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl"
-                style={{ backgroundColor: 'rgba(0, 212, 255, 0.1)' }}
+                style={{ backgroundColor: 'var(--accent-subtle)' }}
               >
-                <Video className="h-7 w-7" style={{ color: '#00d4ff' }} />
+                <Video className="h-7 w-7" style={{ color: 'var(--accent)' }} />
               </div>
               <p
                 className="mb-1 text-base font-medium"
@@ -139,11 +139,11 @@ export default function VideoReportsPage() {
                 <CardContent className="flex items-center gap-4 py-5">
                   <div
                     className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
-                    style={{ backgroundColor: 'rgba(0, 212, 255, 0.1)' }}
+                    style={{ backgroundColor: 'var(--accent-subtle)' }}
                   >
                     <Video
                       className="h-6 w-6"
-                      style={{ color: '#00d4ff' }}
+                      style={{ color: 'var(--accent)' }}
                     />
                   </div>
                   <div>

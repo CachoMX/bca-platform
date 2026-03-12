@@ -15,6 +15,7 @@ import {
   MessageCircle,
   FileUp,
   Video,
+  Map,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -75,6 +76,7 @@ export const navigation: NavItem[] = [
     roles: ALL_ROLES,
     children: [
       { label: 'Useful Links', href: '/resources/links', icon: Link2, roles: ALL_ROLES },
+      { label: 'Time Zones & Weather', href: '/resources/timezones', icon: Map, roles: ALL_ROLES },
       { label: 'Business Entities', href: '/resources/entities', icon: Building2, roles: ALL_ROLES },
     ],
   },

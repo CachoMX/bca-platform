@@ -49,18 +49,18 @@ export default function LoginPage() {
   return (
     <div className="w-full max-w-md px-4">
       <div
-        className="rounded-xl border border-[#252538] bg-[#141422] p-8"
+        className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-8"
         style={{
-          boxShadow: '0 0 40px rgba(0, 212, 255, 0.08), 0 0 80px rgba(0, 212, 255, 0.04)',
+          boxShadow: 'var(--shadow-lg)',
         }}
       >
         {/* Header */}
         <div className="mb-8 flex flex-col items-center text-center">
           <Image src="/pulse-icon.png" alt="PulseBC" width={64} height={64} className="mb-3" />
-          <h1 className="text-4xl font-bold tracking-tight text-[#00d4ff]">
-            Pulse<span className="text-white/80">BC</span>
+          <h1 className="text-4xl font-bold tracking-tight text-[var(--accent)]">
+            Pulse<span className="text-[var(--text-primary)]">BC</span>
           </h1>
-          <p className="mt-2 text-sm text-white/40">Sign in to your account</p>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">Sign in to your account</p>
         </div>
 
         {/* Form */}
@@ -69,7 +69,7 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="email"
-              className="mb-1.5 block text-sm font-medium text-white/60"
+              className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
             >
               Email
             </label>
@@ -79,7 +79,7 @@ export default function LoginPage() {
               autoComplete="email"
               placeholder="you@example.com"
               disabled={isSubmitting}
-              className="w-full rounded-lg border border-[#252538] bg-[#0f0f1a] px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none transition-colors focus:border-[#00d4ff]/50 focus:ring-1 focus:ring-[#00d4ff]/25 disabled:opacity-50"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none transition-colors focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] disabled:opacity-50"
               {...register('email')}
             />
             {errors.email && (
@@ -93,7 +93,7 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="password"
-              className="mb-1.5 block text-sm font-medium text-white/60"
+              className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
             >
               Password
             </label>
@@ -103,7 +103,7 @@ export default function LoginPage() {
               autoComplete="current-password"
               placeholder="Enter your password"
               disabled={isSubmitting}
-              className="w-full rounded-lg border border-[#252538] bg-[#0f0f1a] px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none transition-colors focus:border-[#00d4ff]/50 focus:ring-1 focus:ring-[#00d4ff]/25 disabled:opacity-50"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none transition-colors focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] disabled:opacity-50"
               {...register('password')}
             />
             {errors.password && (
@@ -124,14 +124,14 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-lg bg-[#00d4ff] px-4 py-2.5 text-sm font-semibold text-[#0a0a12] transition-all hover:bg-[#33dfff] hover:shadow-lg hover:shadow-[#00d4ff]/20 focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/50 focus:ring-offset-2 focus:ring-offset-[#141422] disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-[var(--accent-contrast)] transition-all hover:bg-[var(--accent-hover)] hover:shadow-lg hover:shadow-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--bg-card)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
 
         {/* Footer */}
-        <p className="mt-8 text-center text-xs text-white/25">
+        <p className="mt-8 text-center text-xs text-[var(--text-muted)]">
           Benjamin Chaise &amp; Associates
         </p>
       </div>

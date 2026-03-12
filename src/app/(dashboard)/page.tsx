@@ -21,8 +21,8 @@ export default function DashboardPage() {
       label: "Today's Calls",
       value: stats?.todayCalls ?? 0,
       icon: Phone,
-      color: '#00d4ff',
-      bg: 'rgba(0, 212, 255, 0.1)',
+      color: 'var(--accent)',
+      bg: 'var(--accent-subtle)',
     },
     {
       label: "This Week's Calls",
@@ -85,21 +85,21 @@ export default function DashboardPage() {
               className="absolute inset-0 opacity-5"
               style={{
                 background:
-                  'linear-gradient(135deg, #00d4ff 0%, transparent 50%)',
+                  'linear-gradient(135deg, var(--accent) 0%, transparent 50%)',
               }}
             />
             <CardContent className="relative py-6">
               <div className="flex items-start gap-4">
                 <div
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-                  style={{ backgroundColor: 'rgba(0, 212, 255, 0.1)' }}
+                  style={{ backgroundColor: 'var(--accent-subtle)' }}
                 >
-                  <Quote className="h-5 w-5" style={{ color: '#00d4ff' }} />
+                  <Quote className="h-5 w-5" style={{ color: 'var(--accent)' }} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p
                     className="mb-2 text-xs font-semibold uppercase tracking-wider"
-                    style={{ color: '#00d4ff' }}
+                    style={{ color: 'var(--accent)' }}
                   >
                     Quote of the Day
                   </p>

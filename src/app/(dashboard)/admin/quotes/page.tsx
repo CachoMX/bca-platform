@@ -129,9 +129,9 @@ export default function QuotesPage() {
             <CardContent className="flex flex-col items-center justify-center py-16">
               <div
                 className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl"
-                style={{ backgroundColor: 'rgba(0, 212, 255, 0.1)' }}
+                style={{ backgroundColor: 'var(--accent-subtle)' }}
               >
-                <Quote className="h-7 w-7" style={{ color: '#00d4ff' }} />
+                <Quote className="h-7 w-7" style={{ color: 'var(--accent)' }} />
               </div>
               <p
                 className="mb-1 text-base font-medium"
@@ -161,11 +161,11 @@ export default function QuotesPage() {
                 <CardContent className="flex items-start gap-4 py-4">
                   <div
                     className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: 'rgba(0, 212, 255, 0.08)' }}
+                    style={{ backgroundColor: 'var(--accent-subtle)' }}
                   >
                     <Quote
                       className="h-4 w-4"
-                      style={{ color: '#00d4ff' }}
+                      style={{ color: 'var(--accent)' }}
                     />
                   </div>
                   <p

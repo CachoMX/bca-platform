@@ -5,7 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { ChevronDown, LogOut } from 'lucide-react';
+import { ChevronDown, LogOut, Sun, Moon } from 'lucide-react';
+import { useTheme } from '@/components/theme-provider';
 import { cn } from '@/lib/utils';
 import { navigation, adminNavigation, type NavItem } from '@/config/navigation';
 
@@ -108,6 +109,7 @@ function CollapsibleNav({
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { theme, toggleTheme } = useTheme();
 
   const userRole = session?.user?.role ?? 0;
   const userName = session?.user?.name ?? 'User';
@@ -204,6 +206,26 @@ export default function Sidebar() {
         >
           {userName}
         </span>
+        <button
+          onClick={toggleTheme}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors"
+          style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--accent)';
+            e.currentTarget.style.backgroundColor = 'var(--accent-subtle)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--text-muted)';
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? (
+            <Sun className="h-4 w-4" />
+          ) : (
+            <Moon className="h-4 w-4" />
+          )}
+        </button>
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors"

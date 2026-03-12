@@ -425,7 +425,7 @@ function WeeklyTimesheet() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Timer className="h-5 w-5" style={{ color: '#00d4ff' }} />
+            <Timer className="h-5 w-5" style={{ color: 'var(--accent)' }} />
             Weekly Timesheet
           </CardTitle>
 

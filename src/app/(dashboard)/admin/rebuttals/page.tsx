@@ -178,9 +178,9 @@ export default function RebuttalsPage() {
             <CardContent className="flex flex-col items-center justify-center py-16">
               <div
                 className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl"
-                style={{ backgroundColor: 'rgba(0, 212, 255, 0.1)' }}
+                style={{ backgroundColor: 'var(--accent-subtle)' }}
               >
-                <FileText className="h-7 w-7" style={{ color: '#00d4ff' }} />
+                <FileText className="h-7 w-7" style={{ color: 'var(--accent)' }} />
               </div>
               <p
                 className="mb-1 text-base font-medium"

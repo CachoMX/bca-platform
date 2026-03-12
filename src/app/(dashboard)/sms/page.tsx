@@ -356,7 +356,7 @@ export default function SmsPage() {
                                   ? 'var(--accent)'
                                   : 'var(--bg-secondary)',
                                 color: isOutbound
-                                  ? '#0a0a12'
+                                  ? 'var(--accent-contrast)'
                                   : 'var(--text-primary)',
                                 borderBottomRightRadius: isOutbound
                                   ? '4px'
@@ -374,7 +374,7 @@ export default function SmsPage() {
                                 style={{
                                   opacity: 0.7,
                                   color: isOutbound
-                                    ? '#0a0a12'
+                                    ? 'var(--accent-contrast)'
                                     : 'var(--text-muted)',
                                 }}
                               >

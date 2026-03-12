@@ -836,7 +836,7 @@ function EditTimeTab() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Clock className="h-4 w-4" style={{ color: '#00d4ff' }} />
+              <Clock className="h-4 w-4" style={{ color: 'var(--accent)' }} />
               {selectedEmployeeName}&apos;s Timesheet
             </CardTitle>
           </CardHeader>
@@ -999,7 +999,7 @@ function EditTimeTab() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <FileText className="h-4 w-4" style={{ color: '#00d4ff' }} />
+              <FileText className="h-4 w-4" style={{ color: 'var(--accent)' }} />
               Modifications This Week
             </CardTitle>
           </CardHeader>
@@ -1163,7 +1163,7 @@ function TimeCell({
       {modified && (
         <Pencil
           className="h-3 w-3 shrink-0"
-          style={{ color: '#00d4ff' }}
+          style={{ color: 'var(--accent)' }}
           aria-label="Modified by admin"
         />
       )}
@@ -1202,7 +1202,7 @@ function BreakCell({
           {modifiedOut && (
             <Pencil
               className="ml-0.5 inline h-2.5 w-2.5"
-              style={{ color: '#00d4ff' }}
+              style={{ color: 'var(--accent)' }}
             />
           )}
         </button>
@@ -1215,7 +1215,7 @@ function BreakCell({
           {modifiedIn && (
             <Pencil
               className="ml-0.5 inline h-2.5 w-2.5"
-              style={{ color: '#00d4ff' }}
+              style={{ color: 'var(--accent)' }}
             />
           )}
         </button>
@@ -1340,7 +1340,7 @@ function AuditLogTab() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <FileText className="h-4 w-4" style={{ color: '#00d4ff' }} />
+              <FileText className="h-4 w-4" style={{ color: 'var(--accent)' }} />
               Audit Log
             </CardTitle>
           </CardHeader>
@@ -1439,7 +1439,7 @@ function AuditTable({
               </td>
               <td
                 className="px-3 py-3 font-medium"
-                style={{ color: '#00d4ff' }}
+                style={{ color: 'var(--accent)' }}
               >
                 {formatTime(audit.newValue)}
               </td>
