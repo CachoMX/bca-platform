@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { ChevronDown, LogOut } from 'lucide-react';
@@ -127,18 +128,13 @@ export default function Sidebar() {
       }}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center gap-2 border-b px-6" style={{ borderColor: 'var(--border)' }}>
+      <div className="flex h-16 items-center gap-2.5 border-b px-5" style={{ borderColor: 'var(--border)' }}>
+        <Image src="/pulse-icon.png" alt="PulseBC" width={28} height={28} />
         <span
           className="text-xl font-bold tracking-wide"
           style={{ color: 'var(--accent)' }}
         >
-          BCA
-        </span>
-        <span
-          className="text-sm font-medium"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          Platform
+          Pulse<span style={{ color: 'var(--text-primary)' }}>BC</span>
         </span>
       </div>
 

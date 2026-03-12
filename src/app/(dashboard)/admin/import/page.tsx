@@ -43,15 +43,56 @@ const TARGET_FIELDS: { key: keyof ColumnMapping; label: string }[] = [
   { key: 'timezone', label: 'Timezone' },
 ];
 
+function parseCSVLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < line.length) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          // Escaped quote ("") → literal "
+          current += '"';
+          i += 2;
+        } else {
+          // End of quoted field
+          inQuotes = false;
+          i++;
+        }
+      } else {
+        current += ch;
+        i++;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+        i++;
+      } else if (ch === ',') {
+        fields.push(current.trim());
+        current = '';
+        i++;
+      } else {
+        current += ch;
+        i++;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
 function parseCSV(text: string): { headers: string[]; rows: ImportRow[] } {
   const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '');
   if (lines.length === 0) return { headers: [], rows: [] };
 
-  const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
+  const headers = parseCSVLine(lines[0]);
   const rows: ImportRow[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map((v) => v.trim().replace(/^"|"$/g, ''));
+    const values = parseCSVLine(lines[i]);
     const row: ImportRow = {};
     headers.forEach((header, idx) => {
       row[header] = values[idx] ?? '';

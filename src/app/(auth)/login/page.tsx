@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { signIn } from 'next-auth/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,6 +40,7 @@ export default function LoginPage() {
       }
 
       router.push('/');
+      router.refresh();
     } catch {
       setError('An unexpected error occurred. Please try again.');
     }
@@ -53,11 +55,11 @@ export default function LoginPage() {
         }}
       >
         {/* Header */}
-        <div className="mb-8 text-center">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <Image src="/pulse-icon.png" alt="PulseBC" width={64} height={64} className="mb-3" />
           <h1 className="text-4xl font-bold tracking-tight text-[#00d4ff]">
-            BCA
+            Pulse<span className="text-white/80">BC</span>
           </h1>
-          <p className="mt-1 text-lg font-medium text-white/80">Platform</p>
           <p className="mt-2 text-sm text-white/40">Sign in to your account</p>
         </div>
 

@@ -3,8 +3,12 @@ import { Providers } from '@/components/providers';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BCA Platform',
-  description: 'Benjamin Chaise & Associates - CRM Platform',
+  title: 'PulseBC',
+  description: 'PulseBC - Benjamin Chaise & Associates',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export default function RootLayout({

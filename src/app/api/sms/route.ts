@@ -85,8 +85,8 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        textMessage: { text: messageBody },
         phoneNumbers: [phoneNumber],
-        message: messageBody,
       }),
     });
 
