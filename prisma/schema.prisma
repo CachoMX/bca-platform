@@ -1,0 +1,240 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+  schemas  = ["dbo", "benjaise_sqluser", "benjaise_sqluser2"]
+}
+
+model User {
+  idUser      Int      @id @default(autoincrement()) @map("IdUser")
+  name        String?  @map("Name")
+  lastname    String?  @map("Lastname")
+  email       String?  @unique @map("Email")
+  password    String?  @map("Password")
+  idRole      Int?     @map("IdRole")
+  timeZone    String?  @map("TimeZone")
+  city        String?  @map("City")
+  state       String?  @map("State")
+  country     String?  @map("Country")
+  sendEmail   Int?     @default(0) @map("SendEmail")
+  status      Boolean? @default(true) @map("Status")
+  isPartTime  Boolean? @default(false) @map("IsPartTime")
+
+  role        Role?    @relation(fields: [idRole], references: [idRole])
+  calls       Call[]   @relation("UserCalls")
+  closedCalls Call[]   @relation("CloserCalls")
+
+  timeLogs             EmployeeTimeLog[]
+  schedules            EmployeeSchedule[]
+  disconnections       EmployeeDisconnection[] @relation("DisconnectedUser")
+  videoViews           VideoView[]
+  activityLogs         UserActivityLog[]
+
+  @@map("Users")
+  @@schema("dbo")
+}
+
+model Role {
+  idRole Int    @id @map("IdRole")
+  role   String @map("Role")
+
+  users  User[]
+
+  @@map("Roles")
+  @@schema("dbo")
+}
+
+model Business {
+  idBusiness   Int     @id @default(autoincrement()) @map("IdBusiness")
+  businessName String? @map("BusinessName")
+  phone        String? @map("Phone")
+  phoneDigits  String? @map("PhoneDigits")
+  address      String? @map("Address")
+  location     String? @map("Location")
+  industry     String? @map("Industry")
+  timeZone     String? @map("TimeZone")
+  idStatus     Int?    @map("IdStatus")
+
+  calls        Call[]
+
+  @@map("Businesses")
+  @@schema("dbo")
+}
+
+model Disposition {
+  idDisposition Int    @id @map("IdDisposition")
+  disposition   String @map("Disposition")
+
+  calls         Call[]
+
+  @@map("Dispositions")
+  @@schema("dbo")
+}
+
+model Call {
+  idCall          Int       @id @default(autoincrement()) @map("IdCall")
+  idUser          Int       @map("IdUser")
+  idBusiness      Int       @map("IdBusiness")
+  idDisposition   Int?      @map("IdDisposition")
+  callDate        DateTime  @map("CallDate")
+  comments        String?   @map("Comments")
+  idCloser        Int?      @map("IdCloser")
+  dMakerName      String?   @map("DMakerName")
+  dMPhone         String?   @map("DMPhone")
+  dMEmail         String?   @map("DMEmail")
+  pDebtorName     String?   @map("PDebtorName")
+  pDebtorAmmount  String?   @map("PDebtorAmmount")
+  porcentageCircle String?  @map("PorcentageCircle")
+  agreementSent   String?   @map("AgreementSent")
+  how             String?   @map("How")
+  callBack        DateTime? @map("CallBack") @db.Date
+
+  user            User        @relation("UserCalls", fields: [idUser], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
+  business        Business    @relation(fields: [idBusiness], references: [idBusiness], onDelete: NoAction, onUpdate: NoAction)
+  disposition     Disposition? @relation(fields: [idDisposition], references: [idDisposition], onDelete: NoAction, onUpdate: NoAction)
+  closer          User?       @relation("CloserCalls", fields: [idCloser], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("Calls")
+  @@schema("dbo")
+}
+
+model Quote {
+  idQuote Int    @id @default(autoincrement()) @map("idQuote")
+  quote   String @map("Quote")
+
+  @@map("Quotes")
+  @@schema("dbo")
+}
+
+model Rebuttal {
+  idRebuttal   Int       @id @default(autoincrement()) @map("IdRebuttal")
+  title        String    @map("Title")
+  content      String    @map("Content")
+  createdDate  DateTime? @map("CreatedDate")
+  modifiedDate DateTime? @map("ModifiedDate")
+  isActive     Boolean?  @default(true) @map("IsActive")
+
+  @@map("Rebuttals")
+  @@schema("benjaise_sqluser2")
+}
+
+model EmployeeTimeLog {
+  timeLogId         Int      @id @default(autoincrement()) @map("TimeLogID")
+  idUser            Int      @map("IdUser")
+  logDate           DateTime @map("LogDate") @db.Date
+  clockIn           DateTime? @map("ClockIn") @db.Time
+  firstBreakOut     DateTime? @map("FirstBreakOut") @db.Time
+  firstBreakIn      DateTime? @map("FirstBreakIn") @db.Time
+  lunchOut          DateTime? @map("LunchOut") @db.Time
+  lunchIn           DateTime? @map("LunchIn") @db.Time
+  secondBreakOut    DateTime? @map("SecondBreakOut") @db.Time
+  secondBreakIn     DateTime? @map("SecondBreakIn") @db.Time
+  clockOut          DateTime? @map("ClockOut") @db.Time
+  totalHours        Decimal?  @map("TotalHours")
+  overtimeHours     Decimal?  @map("OvertimeHours")
+  isModifiedByAdmin Boolean?  @default(false) @map("IsModifiedByAdmin")
+  hasDisconnections Boolean?  @default(false) @map("HasDisconnections")
+
+  user              User     @relation(fields: [idUser], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("EmployeeTimeLog")
+  @@schema("benjaise_sqluser2")
+}
+
+model EmployeeTimeLogAudit {
+  auditId        Int       @id @default(autoincrement()) @map("AuditId")
+  timeLogId      Int       @map("TimeLogId")
+  idUser         String    @map("IdUser")
+  modifiedBy     String    @map("ModifiedBy")
+  modifiedDate   DateTime  @map("ModifiedDate")
+  fieldModified  String    @map("FieldModified")
+  oldValue       DateTime? @map("OldValue") @db.Time
+  newValue       DateTime? @map("NewValue") @db.Time
+  reason         String    @map("Reason")
+
+  @@map("EmployeeTimeLogAudit")
+  @@schema("benjaise_sqluser2")
+}
+
+model EmployeeSchedule {
+  scheduleId Int       @id @default(autoincrement()) @map("ScheduleID")
+  idUser     Int       @map("IdUser")
+  dayOfWeek  String    @map("DayOfWeek")
+  startTime  DateTime  @map("StartTime") @db.Time
+  endTime    DateTime  @map("EndTime") @db.Time
+
+  user       User      @relation(fields: [idUser], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("EmployeeSchedule")
+  @@schema("benjaise_sqluser2")
+}
+
+model EmployeeDisconnection {
+  idDisconnection    Int       @id @default(autoincrement()) @map("IdDisconnection")
+  idUser             Int       @map("IdUser")
+  disconnectionDate  DateTime  @map("DisconnectionDate") @db.Date
+  disconnectionTime  DateTime  @map("DisconnectionTime") @db.Time
+  reconnectionTime   DateTime? @map("ReconnectionTime") @db.Time
+  reason             String?   @map("Reason")
+  disconnectedBy     String?   @map("DisconnectedBy")
+  reconnectedBy      String?   @map("ReconnectedBy")
+  isActive           Boolean?  @default(true) @map("IsActive")
+
+  user               User      @relation("DisconnectedUser", fields: [idUser], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("EmployeeDisconnections")
+  @@schema("benjaise_sqluser2")
+}
+
+model Video {
+  videoId       Int     @id @map("VideoId")
+  videoTitle    String  @map("VideoTitle")
+  videoFilePath String? @map("VideoFilePath")
+
+  views         VideoView[]
+
+  @@map("Videos")
+  @@schema("benjaise_sqluser2")
+}
+
+model VideoView {
+  id       Int      @id @default(autoincrement()) @map("Id")
+  userId   Int      @map("UserId")
+  videoId  Int      @map("VideoId")
+  viewedOn DateTime @map("ViewedOn")
+
+  user     User     @relation(fields: [userId], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
+  video    Video    @relation(fields: [videoId], references: [videoId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("VideoViews")
+  @@schema("benjaise_sqluser2")
+}
+
+model UserActivityLog {
+  idLog             Int      @id @default(autoincrement()) @map("IdLog")
+  idUser            Int      @map("IdUser")
+  action            String   @map("Action")
+  actionDescription String   @map("ActionDescription")
+  actionTime        DateTime @map("ActionTime")
+  additionalDetails String?  @map("AdditionalDetails")
+
+  user              User     @relation(fields: [idUser], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("UserActivityLog")
+  @@schema("benjaise_sqluser")
+}
+
+model Message {
+  id          Int      @id @default(autoincrement()) @map("Id")
+  phoneNumber String   @map("PhoneNumber")
+  messageBody String   @map("MessageBody")
+  direction   String   @map("Direction")
+  sentTime    DateTime @map("SentTime")
+  isRead      Boolean? @default(false) @map("IsRead")
+
+  @@map("Messages")
+  @@schema("benjaise_sqluser2")
+}

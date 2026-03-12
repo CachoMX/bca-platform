@@ -1,0 +1,333 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+@import "tailwindcss";
+
+/* ============================================
+   BCA Platform - Dark Theme
+   Design Language: aso-platform
+   ============================================ */
+
+:root {
+  /* Background layers */
+  --bg-primary: #0a0a12;
+  --bg-secondary: #0f0f1a;
+  --bg-card: #141422;
+  --bg-elevated: #1a1a2c;
+
+  /* Accent */
+  --accent: #00d4ff;
+  --accent-hover: #33ddff;
+  --accent-subtle: rgba(0, 212, 255, 0.1);
+  --accent-glow: rgba(0, 212, 255, 0.35);
+  --accent-glow-sm: rgba(0, 212, 255, 0.2);
+  --purple: #a855f7;
+  --purple-subtle: rgba(168, 85, 247, 0.1);
+
+  /* Text */
+  --text-primary: #f0f0ff;
+  --text-secondary: #9090b8;
+  --text-muted: #606080;
+
+  /* Status */
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #fbbf24;
+  --success-subtle: rgba(34, 197, 94, 0.1);
+  --danger-subtle: rgba(239, 68, 68, 0.1);
+  --warning-subtle: rgba(251, 191, 36, 0.1);
+
+  /* Borders */
+  --border: #252538;
+  --border-strong: #353550;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(0, 212, 255, 0.15);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@theme inline {
+  --color-background: var(--bg-primary);
+  --color-foreground: var(--text-primary);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-card: var(--bg-card);
+  --color-elevated: var(--bg-elevated);
+  --color-border: var(--border);
+  --color-muted: var(--text-muted);
+  --color-secondary: var(--text-secondary);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  line-height: 1.6;
+}
+
+/* ============================================
+   Selection Highlight
+   ============================================ */
+
+::selection {
+  background-color: rgba(0, 212, 255, 0.3);
+  color: #ffffff;
+}
+
+::-moz-selection {
+  background-color: rgba(0, 212, 255, 0.3);
+  color: #ffffff;
+}
+
+/* ============================================
+   Custom Scrollbar
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+  transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--bg-secondary);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) var(--bg-secondary);
+}
+
+/* ============================================
+   Utility Classes - Glow Effects
+   ============================================ */
+
+.glow {
+  box-shadow:
+    0 0 20px var(--accent-glow),
+    0 0 40px rgba(0, 212, 255, 0.1),
+    inset 0 0 20px rgba(0, 212, 255, 0.05);
+  border-color: var(--accent);
+}
+
+.glow-sm {
+  box-shadow:
+    0 0 10px var(--accent-glow-sm),
+    0 0 20px rgba(0, 212, 255, 0.05);
+  border-color: rgba(0, 212, 255, 0.4);
+}
+
+/* ============================================
+   Utility Classes - Cards
+   ============================================ */
+
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base),
+    transform var(--transition-base);
+}
+
+.card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.card-elevated {
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base),
+    transform var(--transition-base);
+}
+
+.card-elevated:hover {
+  border-color: rgba(0, 212, 255, 0.2);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 30px rgba(0, 212, 255, 0.05);
+}
+
+/* ============================================
+   Form Input Focus Styles
+   ============================================ */
+
+input,
+textarea,
+select {
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 3px var(--accent-subtle),
+    0 0 12px rgba(0, 212, 255, 0.15);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* ============================================
+   Interactive Element Transitions
+   ============================================ */
+
+a,
+button,
+[role="button"] {
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button:active,
+[role="button"]:active {
+  transform: scale(0.98);
+}
+
+/* ============================================
+   Link Styles
+   ============================================ */
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* ============================================
+   Reduced Motion
+   ============================================ */
+
+/* ============================================
+   Rebuttal HTML Content
+   ============================================ */
+
+.rebuttal-content h1,
+.rebuttal-content h2,
+.rebuttal-content h3,
+.rebuttal-content h4,
+.rebuttal-content h5,
+.rebuttal-content h6 {
+  color: var(--text-primary) !important;
+  font-family: inherit !important;
+  background-color: transparent !important;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.rebuttal-content h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.rebuttal-content p {
+  color: var(--text-secondary) !important;
+  font-family: inherit !important;
+  background-color: transparent !important;
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+}
+
+.rebuttal-content div {
+  color: var(--text-secondary) !important;
+  font-family: inherit !important;
+  background-color: transparent !important;
+}
+
+.rebuttal-content strong,
+.rebuttal-content b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.rebuttal-content ul,
+.rebuttal-content ol {
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.rebuttal-content li {
+  margin-bottom: 0.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

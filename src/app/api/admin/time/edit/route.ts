@@ -1,0 +1,119 @@
+import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { timeEditSchema } from '@/lib/validators';
+
+const VALID_FIELDS = [
+  'clockIn',
+  'firstBreakOut',
+  'firstBreakIn',
+  'lunchOut',
+  'lunchIn',
+  'secondBreakOut',
+  'secondBreakIn',
+  'clockOut',
+];
+
+export async function POST(request: Request) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const role = (session.user as { role: number }).role;
+    const adminUserId = (session.user as { userId: number }).userId;
+
+    if (role !== 1 && role !== 2) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const parsed = timeEditSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+
+    const { userId, date, field, value, reason } = parsed.data;
+
+    // Validate field name
+    if (!VALID_FIELDS.includes(field)) {
+      return NextResponse.json(
+        { error: `Invalid field: ${field}. Must be one of: ${VALID_FIELDS.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Validate time format (HH:mm)
+    const timeRegex = /^\d{2}:\d{2}$/;
+    if (!timeRegex.test(value)) {
+      return NextResponse.json(
+        { error: 'Value must be in HH:mm format' },
+        { status: 400 }
+      );
+    }
+
+    // Parse the target date
+    const dateParts = date.split('-').map(Number);
+    const targetDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+    const targetDateEnd = new Date(targetDate);
+    targetDateEnd.setDate(targetDateEnd.getDate() + 1);
+
+    // Find the time log for this user and date
+    const log = await prisma.employeeTimeLog.findFirst({
+      where: {
+        idUser: userId,
+        logDate: {
+          gte: targetDate,
+          lt: targetDateEnd,
+        },
+      },
+    });
+
+    if (!log) {
+      return NextResponse.json(
+        { error: 'No time log found for this user on this date' },
+        { status: 404 }
+      );
+    }
+
+    // Get the current (old) value for the audit trail
+    const oldValueRaw = log[field as keyof typeof log] as Date | null;
+
+    // Build the new DateTime from the date + HH:mm value
+    const [hours, minutes] = value.split(':').map(Number);
+    const newDateTime = new Date(targetDate);
+    newDateTime.setHours(hours, minutes, 0, 0);
+
+    // Update the time log and create audit record in a transaction
+    const [updatedLog] = await prisma.$transaction([
+      prisma.employeeTimeLog.update({
+        where: { timeLogId: log.timeLogId },
+        data: {
+          [field]: newDateTime,
+          isModifiedByAdmin: true,
+        },
+      }),
+      prisma.employeeTimeLogAudit.create({
+        data: {
+          timeLogId: log.timeLogId,
+          idUser: String(userId),
+          modifiedBy: String(adminUserId),
+          modifiedDate: new Date(),
+          fieldModified: field,
+          oldValue: oldValueRaw,
+          newValue: newDateTime,
+          reason,
+        },
+      }),
+    ]);
+
+    return NextResponse.json({ data: updatedLog });
+  } catch (error) {
+    console.error('Admin time edit error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

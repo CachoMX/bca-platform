@@ -1,0 +1,191 @@
+'use client';
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+/* -------------------------------------------------- */
+/*  Types                                              */
+/* -------------------------------------------------- */
+
+export interface User {
+  userId: number;
+  name: string;
+  lastname: string;
+  email: string;
+  role: number;
+  isActive: boolean;
+  isPartTime: boolean;
+  timezone: string;
+  city: string;
+  state: string;
+  country: string;
+}
+
+export interface CreateUserPayload {
+  name: string;
+  lastname: string;
+  email: string;
+  password: string;
+  role: number;
+  timezone: string;
+  city: string;
+  state: string;
+  country: string;
+  isPartTime: boolean;
+  sendEmail: boolean;
+}
+
+export interface UpdateUserPayload {
+  userId: number;
+  name: string;
+  lastname: string;
+  email: string;
+  password?: string;
+  role: number;
+  timezone: string;
+  city: string;
+  state: string;
+  country: string;
+  isPartTime: boolean;
+  sendEmail: boolean;
+}
+
+export interface ScheduleDay {
+  day: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface UserSchedule {
+  userId: number;
+  schedule: ScheduleDay[];
+}
+
+export interface UpdateSchedulePayload {
+  userId: number;
+  schedule: ScheduleDay[];
+}
+
+/* -------------------------------------------------- */
+/*  Helpers                                            */
+/* -------------------------------------------------- */
+
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, init);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Request failed (${res.status})`);
+  }
+  return res.json();
+}
+
+/* -------------------------------------------------- */
+/*  Queries                                            */
+/* -------------------------------------------------- */
+
+export function useUsers(search?: string, status?: string) {
+  return useQuery<User[]>({
+    queryKey: ['users', search, status],
+    queryFn: async () => {
+      const qp = new URLSearchParams();
+      if (search) qp.set('search', search);
+      if (status) qp.set('status', status);
+      const qs = qp.toString();
+      const json = await fetchJson<{ data: User[] } | User[]>(
+        `/api/users${qs ? `?${qs}` : ''}`
+      );
+      return Array.isArray(json) ? json : json.data;
+    },
+  });
+}
+
+export function useUser(id: number) {
+  return useQuery<User>({
+    queryKey: ['user', id],
+    queryFn: () => fetchJson(`/api/users/${id}`),
+    enabled: !!id,
+  });
+}
+
+export function useUserSchedule(id: number) {
+  return useQuery<UserSchedule>({
+    queryKey: ['user-schedule', id],
+    queryFn: () => fetchJson(`/api/users/${id}/schedule`),
+    enabled: !!id,
+  });
+}
+
+/* -------------------------------------------------- */
+/*  Mutations                                          */
+/* -------------------------------------------------- */
+
+export function useCreateUser() {
+  const qc = useQueryClient();
+  return useMutation<{ success: boolean }, Error, CreateUserPayload>({
+    mutationFn: ({ role, ...rest }) =>
+      fetchJson('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...rest, roleId: role }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function useUpdateUser() {
+  const qc = useQueryClient();
+  return useMutation<{ success: boolean }, Error, UpdateUserPayload>({
+    mutationFn: ({ userId, role, ...rest }) =>
+      fetchJson(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...rest, roleId: role }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation<{ success: boolean }, Error, number>({
+    mutationFn: (userId) =>
+      fetchJson(`/api/users/${userId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function useUpdateSchedule() {
+  const qc = useQueryClient();
+
+  const DAY_TO_NUMBER: Record<string, number> = {
+    Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+    Thursday: 4, Friday: 5, Saturday: 6,
+  };
+
+  return useMutation<{ success: boolean }, Error, UpdateSchedulePayload>({
+    mutationFn: ({ userId, schedule }) =>
+      fetchJson(`/api/users/${userId}/schedule`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schedule: schedule.map((s) => ({
+            dayOfWeek: DAY_TO_NUMBER[s.day] ?? 0,
+            startTime: s.startTime,
+            endTime: s.endTime,
+          })),
+        }),
+      }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({
+        queryKey: ['user-schedule', variables.userId],
+      });
+    },
+  });
+}
