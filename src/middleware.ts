@@ -9,6 +9,12 @@ const adminApiRoutes = ['/api/users', '/api/import', '/api/settings'];
 const managerApiRoutes = ['/api/admin/time', '/api/reports'];
 
 export default auth((req) => {
+  const host = req.headers.get('host') ?? '';
+  // Redirect QA subdomain to main site
+  if (host.startsWith('qa.')) {
+    return NextResponse.redirect('https://yourdebtcollectors.com/', 301);
+  }
+
   const { pathname } = req.nextUrl;
 
   // Allow public routes
