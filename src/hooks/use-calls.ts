@@ -74,7 +74,7 @@ export function useFilters() {
   return useQuery<FiltersData>({
     queryKey: ['call-filters'],
     queryFn: () => fetchJson('/api/calls/filters'),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000, // 30 min — dropdown values rarely change
   });
 }
 
@@ -111,7 +111,7 @@ export function useNextLead() {
 
 export function useLogCall() {
   const qc = useQueryClient();
-  return useMutation<{ success: boolean }, Error, LogCallPayload>({
+  return useMutation<{ idCall: number }, Error, LogCallPayload>({
     mutationFn: (payload) =>
       fetchJson('/api/calls/log', {
         method: 'POST',
@@ -125,12 +125,16 @@ export function useLogCall() {
 }
 
 export function useRevertBusiness() {
-  return useMutation<{ success: boolean }, Error, { idBusiness: number }>({
+  const qc = useQueryClient();
+  return useMutation<{ success: boolean }, Error, { idBusiness: number; idCall?: number }>({
     mutationFn: (payload) =>
       fetchJson('/api/calls/revert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['call-history'] });
+    },
   });
 }

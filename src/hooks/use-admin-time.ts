@@ -76,6 +76,21 @@ export interface DisconnectPayload {
   reason?: string;
 }
 
+export interface TimeHistoryEntry {
+  timeLogId: number;
+  userId: number;
+  employeeName: string;
+  date: string;
+  clockIn: string | null;
+  firstBreakOut: string | null;
+  firstBreakIn: string | null;
+  lunchOut: string | null;
+  lunchIn: string | null;
+  secondBreakOut: string | null;
+  secondBreakIn: string | null;
+  clockOut: string | null;
+}
+
 /* -------------------------------------------------- */
 /*  Helpers                                            */
 /* -------------------------------------------------- */
@@ -149,6 +164,17 @@ export function useEditTime() {
       });
       qc.invalidateQueries({ queryKey: ['admin-audit-log'] });
     },
+  });
+}
+
+export function useTimeHistory(week: string, userId?: number) {
+  const params = new URLSearchParams({ week });
+  if (userId) params.set('userId', String(userId));
+  return useQuery<TimeHistoryEntry[]>({
+    queryKey: ['admin-time-history', week, userId],
+    queryFn: () => fetchJson(`/api/admin/time/history?${params}`),
+    enabled: !!week,
+    staleTime: 30_000,
   });
 }
 

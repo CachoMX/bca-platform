@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getTodayRangePST, storedTimeToSeconds, nowPstSeconds } from '@/lib/time';
 function getEmployeeStatus(log: {
   clockIn: Date | null;
   firstBreakOut: Date | null;
@@ -34,6 +35,24 @@ function getCurrentBreakStart(log: {
   return null;
 }
 
+/**
+ * Combine a @db.Date logDate with a @db.Time value to produce a real datetime.
+ * Prisma maps SQL Server `time` columns to Date objects with a 1970-01-01 date part,
+ * so we extract HH:MM:SS from the time value and graft it onto logDate.
+ */
+function combineDateTime(logDate: Date, timeVal: Date | null): string | null {
+  if (!timeVal) return null;
+  // Extract the time portion (UTC hours/minutes/seconds from the 1970 Date)
+  const h = String(timeVal.getUTCHours()).padStart(2, '0');
+  const m = String(timeVal.getUTCMinutes()).padStart(2, '0');
+  const s = String(timeVal.getUTCSeconds()).padStart(2, '0');
+  // Extract the date portion from logDate
+  const year = logDate.getUTCFullYear();
+  const month = String(logDate.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(logDate.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}T${h}:${m}:${s}.000Z`;
+}
+
 export async function GET() {
   try {
     const session = await auth();
@@ -46,18 +65,16 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get today's date in PST, then create midnight-UTC boundaries
-    // logDate is stored as midnight UTC (just the date), so we must compare at UTC midnight
-    const now = new Date();
-    const pstDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-    const todayStart = new Date(Date.UTC(pstDate.getFullYear(), pstDate.getMonth(), pstDate.getDate()));
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
+    const { todayStart, todayEnd } = getTodayRangePST();
+    const currentPstSec = nowPstSeconds();
 
     // Fetch all active employees, today's time logs, and active disconnections in parallel
     const [employees, logs, activeDisconnections] = await Promise.all([
       prisma.user.findMany({
-        where: { OR: [{ status: null }, { status: false }] },
+        where: {
+          OR: [{ status: null }, { status: false }],
+          idRole: { in: [1, 2, 3] },
+        },
         select: {
           idUser: true,
           name: true,
@@ -93,9 +110,12 @@ export async function GET() {
       // Determine if break is exceeded (10-minute limit for breaks, not lunch)
       let breakExceeded = false;
       if (breakStart && status !== 'at_lunch') {
-        const breakMs = now.getTime() - new Date(breakStart).getTime();
-        breakExceeded = breakMs > 10 * 60 * 1000;
+        const breakSec = storedTimeToSeconds(breakStart);
+        const elapsedSec = currentPstSec - breakSec;
+        breakExceeded = elapsedSec > 10 * 60;
       }
+
+      const logDate = log?.logDate ?? new Date();
 
       return {
         userId: emp.idUser,
@@ -103,15 +123,15 @@ export async function GET() {
         role: emp.idRole,
         isPartTime: emp.isPartTime,
         status,
-        clockIn: log?.clockIn?.toISOString() || null,
-        firstBreakOut: log?.firstBreakOut?.toISOString() || null,
-        firstBreakIn: log?.firstBreakIn?.toISOString() || null,
-        lunchOut: log?.lunchOut?.toISOString() || null,
-        lunchIn: log?.lunchIn?.toISOString() || null,
-        secondBreakOut: log?.secondBreakOut?.toISOString() || null,
-        secondBreakIn: log?.secondBreakIn?.toISOString() || null,
-        clockOut: log?.clockOut?.toISOString() || null,
-        currentBreakStart: breakStart?.toISOString() || null,
+        clockIn: combineDateTime(logDate, log?.clockIn ?? null),
+        firstBreakOut: combineDateTime(logDate, log?.firstBreakOut ?? null),
+        firstBreakIn: combineDateTime(logDate, log?.firstBreakIn ?? null),
+        lunchOut: combineDateTime(logDate, log?.lunchOut ?? null),
+        lunchIn: combineDateTime(logDate, log?.lunchIn ?? null),
+        secondBreakOut: combineDateTime(logDate, log?.secondBreakOut ?? null),
+        secondBreakIn: combineDateTime(logDate, log?.secondBreakIn ?? null),
+        clockOut: combineDateTime(logDate, log?.clockOut ?? null),
+        currentBreakStart: combineDateTime(logDate, breakStart),
         breakExceeded,
         isDisconnected: disconnectedUserIds.has(emp.idUser),
       };

@@ -22,6 +22,9 @@ model User {
   sendEmail   Int?     @default(0) @map("SendEmail")
   status      Boolean? @default(true) @map("Status")
   isPartTime  Boolean? @default(false) @map("IsPartTime")
+  photo       String?  @map("Photo") @db.NVarChar(Max)
+  resetToken  String?  @map("ResetToken") @db.NVarChar(200)
+  resetExpires DateTime? @map("ResetExpires")
 
   role        Role?    @relation(fields: [idRole], references: [idRole])
   calls       Call[]   @relation("UserCalls")
@@ -41,7 +44,8 @@ model Role {
   idRole Int    @id @map("IdRole")
   role   String @map("Role")
 
-  users  User[]
+  users       User[]
+  permissions RolePermission[]
 
   @@map("Roles")
   @@schema("dbo")
@@ -60,6 +64,8 @@ model Business {
 
   calls        Call[]
 
+  @@index([idStatus, industry], map: "IX_Businesses_Status_Industry")
+  @@index([idStatus, timeZone], map: "IX_Businesses_Status_TimeZone")
   @@map("Businesses")
   @@schema("dbo")
 }
@@ -146,7 +152,7 @@ model EmployeeTimeLog {
 
 model EmployeeTimeLogAudit {
   auditId        Int       @id @default(autoincrement()) @map("AuditId")
-  timeLogId      Int       @map("TimeLogId")
+  timeLogId      Int?      @map("TimeLogId")
   idUser         String    @map("IdUser")
   modifiedBy     String    @map("ModifiedBy")
   modifiedDate   DateTime  @map("ModifiedDate")
@@ -225,6 +231,19 @@ model UserActivityLog {
 
   @@map("UserActivityLog")
   @@schema("benjaise_sqluser")
+}
+
+model RolePermission {
+  id            Int     @id @default(autoincrement()) @map("Id")
+  idRole        Int     @map("IdRole")
+  permissionKey String  @map("PermissionKey") @db.NVarChar(50)
+  enabled       Boolean @map("Enabled")
+
+  role          Role    @relation(fields: [idRole], references: [idRole])
+
+  @@unique([idRole, permissionKey])
+  @@map("RolePermission")
+  @@schema("benjaise_sqluser2")
 }
 
 model Message {

@@ -17,11 +17,11 @@ export const logCallSchema = z.object({
   idDisposition: z.number().int().positive(),
   comments: z.string().max(2000).optional(),
   idCloser: z.number().int().positive().optional(),
-  callBack: z.string().datetime().optional(),
+  callBack: z.string().optional(),
   dmakerName: z.string().max(200).optional(),
-  dmakerEmail: z.string().email().optional().or(z.literal('')),
+  dmakerEmail: z.string().max(200).optional(),
   dmakerPhone: z.string().max(20).optional(),
-  debtAmount: z.number().positive().optional(),
+  debtAmount: z.number().nonnegative().optional(),
   debtorName: z.string().max(200).optional(),
   agreementSent: z.boolean().optional(),
 });
@@ -70,7 +70,7 @@ export const createUserSchema = z.object({
   lastname: z.string().min(1).max(100),
   email: z.string().email(),
   password: z.string().min(6).max(100),
-  roleId: z.number().int().min(1).max(4),
+  roleId: z.number().int().min(1).max(3),
   timezone: z.string().max(50).optional(),
   city: z.string().max(100).optional(),
   state: z.string().max(100).optional(),
@@ -140,6 +140,54 @@ export const settingSchema = z.object({
   value: z.string().max(5000),
 });
 
+// Registration (self-service, no auth)
+export const registerSchema = z.object({
+  name: z.string().min(1, 'First name is required').max(100),
+  lastname: z.string().min(1, 'Last name is required').max(100),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters').max(100),
+  confirmPassword: z.string(),
+  timezone: z.string().max(50).optional(),
+  city: z.string().max(100).optional(),
+  state: z.string().max(100).optional(),
+  country: z.string().max(100).optional(),
+}).refine((d) => d.password === d.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+});
+
+// Forgot / Reset password
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(6, 'Password must be at least 6 characters').max(100),
+  confirmPassword: z.string(),
+}).refine((d) => d.password === d.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+});
+
+// Profile (self-service update)
+export const updateProfileSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  lastname: z.string().min(1).max(100).optional(),
+  timezone: z.string().max(50).optional(),
+  city: z.string().max(100).optional(),
+  state: z.string().max(100).optional(),
+  country: z.string().max(100).optional(),
+  currentPassword: z.string().optional(),
+  newPassword: z.string().min(6).max(100).optional(),
+}).refine((d) => {
+  if (d.newPassword && !d.currentPassword) return false;
+  return true;
+}, {
+  message: 'Current password is required to set a new password',
+  path: ['currentPassword'],
+});
+
 // Type exports for use in components
 export type LoginInput = z.infer<typeof loginSchema>;
 export type LogCallInput = z.infer<typeof logCallSchema>;
@@ -153,3 +201,7 @@ export type QuoteInput = z.infer<typeof quoteSchema>;
 export type RebuttalInput = z.infer<typeof rebuttalSchema>;
 export type SendSmsInput = z.infer<typeof sendSmsSchema>;
 export type SettingInput = z.infer<typeof settingSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

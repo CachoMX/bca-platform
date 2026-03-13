@@ -36,8 +36,8 @@ export async function GET(
       userId: idUser,
       schedule: schedules.map((s) => ({
         day: DAY_NAMES[Number(s.dayOfWeek)] ?? s.dayOfWeek,
-        startTime: s.startTime ? `${String(s.startTime.getHours()).padStart(2, '0')}:${String(s.startTime.getMinutes()).padStart(2, '0')}` : '09:00',
-        endTime: s.endTime ? `${String(s.endTime.getHours()).padStart(2, '0')}:${String(s.endTime.getMinutes()).padStart(2, '0')}` : '17:00',
+        startTime: s.startTime ? `${String(s.startTime.getUTCHours()).padStart(2, '0')}:${String(s.startTime.getUTCMinutes()).padStart(2, '0')}` : '09:00',
+        endTime: s.endTime ? `${String(s.endTime.getUTCHours()).padStart(2, '0')}:${String(s.endTime.getUTCMinutes()).padStart(2, '0')}` : '17:00',
       })),
     });
   } catch (error) {
@@ -88,8 +88,8 @@ export async function PUT(
       ...parsed.data.schedule.map((entry) => {
         const [sh, sm] = entry.startTime.split(':').map(Number);
         const [eh, em] = entry.endTime.split(':').map(Number);
-        const startTime = new Date(1970, 0, 1, sh, sm, 0);
-        const endTime = new Date(1970, 0, 1, eh, em, 0);
+        const startTime = new Date(Date.UTC(1970, 0, 1, sh, sm, 0));
+        const endTime = new Date(Date.UTC(1970, 0, 1, eh, em, 0));
         return prisma.employeeSchedule.create({
           data: {
             idUser,
@@ -113,8 +113,8 @@ export async function PUT(
       userId: idUser,
       schedule: schedules.map((s) => ({
         day: DAY_NAMES[Number(s.dayOfWeek)] ?? s.dayOfWeek,
-        startTime: s.startTime ? `${String(s.startTime.getHours()).padStart(2, '0')}:${String(s.startTime.getMinutes()).padStart(2, '0')}` : '09:00',
-        endTime: s.endTime ? `${String(s.endTime.getHours()).padStart(2, '0')}:${String(s.endTime.getMinutes()).padStart(2, '0')}` : '17:00',
+        startTime: s.startTime ? `${String(s.startTime.getUTCHours()).padStart(2, '0')}:${String(s.startTime.getUTCMinutes()).padStart(2, '0')}` : '09:00',
+        endTime: s.endTime ? `${String(s.endTime.getUTCHours()).padStart(2, '0')}:${String(s.endTime.getUTCMinutes()).padStart(2, '0')}` : '17:00',
       })),
     });
   } catch (error) {

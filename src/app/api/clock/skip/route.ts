@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { nowPstAsUtc, getTodayRangePST } from '@/lib/time';
 import { z } from 'zod';
 
 const skipBreakSchema = z.object({
@@ -47,14 +48,8 @@ export async function POST(request: Request) {
 
     const { breakType } = parsed.data;
     const fields = BREAK_FIELDS[breakType];
-    const now = new Date();
-
-    // Get today's date in PST, then create midnight-UTC boundaries
-    // logDate is stored as midnight UTC (just the date)
-    const pstDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-    const todayStart = new Date(Date.UTC(pstDate.getFullYear(), pstDate.getMonth(), pstDate.getDate()));
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
+    const now = nowPstAsUtc();
+    const { todayStart, todayEnd } = getTodayRangePST();
 
     // Find today's time log
     const log = await prisma.employeeTimeLog.findFirst({

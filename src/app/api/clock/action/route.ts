@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { clockActionSchema } from '@/lib/validators';
+import { nowPstAsUtc, getPstHour, getTodayRangePST, minutesSinceStored } from '@/lib/time';
 
 // Sequential order of clock actions
 const ACTION_ORDER = [
@@ -15,27 +16,10 @@ const ACTION_ORDER = [
   'clockOut',
 ] as const;
 
-function getNowPST(): Date {
-  // Get current time in PST
-  const now = new Date();
-  const pstString = now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
-  return new Date(pstString);
-}
-
-function getTodayRangePST(): { todayStart: Date; todayEnd: Date } {
-  const pstNow = getNowPST();
-  const todayStart = new Date(Date.UTC(pstNow.getFullYear(), pstNow.getMonth(), pstNow.getDate()));
-  const todayEnd = new Date(todayStart);
-  todayEnd.setDate(todayEnd.getDate() + 1);
-  return { todayStart, todayEnd };
-}
-
 function applyEarlyClockInRule(time: Date): Date {
-  const pstTime = getNowPST();
-  if (pstTime.getHours() < 6) {
-    // Set to 6:00 AM today in PST
-    const adjusted = new Date(pstTime.getFullYear(), pstTime.getMonth(), pstTime.getDate(), 6, 0, 0, 0);
-    return adjusted;
+  if (getPstHour() < 6) {
+    // Set to 6:00 AM PST (stored as UTC epoch)
+    return new Date(Date.UTC(1970, 0, 1, 6, 0, 0));
   }
   return time;
 }
@@ -59,7 +43,7 @@ export async function POST(request: Request) {
     }
 
     const { action } = parsed.data;
-    const now = new Date();
+    const now = nowPstAsUtc();
     const { todayStart, todayEnd } = getTodayRangePST();
 
     // Find today's time log
@@ -111,12 +95,10 @@ export async function POST(request: Request) {
 
     // Lunch minimum 30-minute rule
     if (action === 'lunchIn' && log?.lunchOut) {
-      const lunchOutTime = new Date(log.lunchOut).getTime();
-      const nowTime = now.getTime();
-      const minutesElapsed = (nowTime - lunchOutTime) / (1000 * 60);
+      const elapsed = minutesSinceStored(log.lunchOut);
 
-      if (minutesElapsed < 30) {
-        const remaining = Math.ceil(30 - minutesElapsed);
+      if (elapsed < 30) {
+        const remaining = Math.ceil(30 - elapsed);
         return NextResponse.json(
           { error: `Lunch must be at least 30 minutes. ${remaining} minute(s) remaining.` },
           { status: 400 }
@@ -124,7 +106,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Determine the time to record
+    // Determine the time to record (PST as UTC-epoch)
     let recordTime = now;
     if (action === 'clockIn') {
       recordTime = applyEarlyClockInRule(now);

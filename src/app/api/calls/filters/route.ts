@@ -10,32 +10,25 @@ export async function GET() {
     }
 
     const [industries, timezones] = await Promise.all([
-      prisma.business.findMany({
-        where: { idStatus: 3 },
-        select: { industry: true },
-        distinct: ['industry'],
-        orderBy: { industry: 'asc' },
-      }),
-      prisma.business.findMany({
-        where: { idStatus: 3 },
-        select: { timeZone: true },
-        distinct: ['timeZone'],
-        orderBy: { timeZone: 'asc' },
-      }),
+      prisma.$queryRaw<{ industry: string }[]>`
+        SELECT DISTINCT Industry as industry
+        FROM dbo.Businesses
+        WHERE IdStatus = 3 AND Industry IS NOT NULL AND Industry != ''
+        ORDER BY Industry
+      `,
+      prisma.$queryRaw<{ timeZone: string }[]>`
+        SELECT DISTINCT UPPER(TimeZone) as timeZone
+        FROM dbo.Businesses
+        WHERE IdStatus = 3 AND TimeZone IS NOT NULL AND TimeZone != ''
+        ORDER BY timeZone
+      `,
     ]);
-
-    // Normalize timezone casing and deduplicate (DB has mixed "est"/"EST")
-    const uniqueTimezones = [
-      ...new Set(
-        timezones
-          .map((t) => t.timeZone?.toUpperCase())
-          .filter((tz): tz is string => tz != null)
-      ),
-    ].sort();
 
     return NextResponse.json({
       industries: industries.map((i) => i.industry),
-      timezones: uniqueTimezones,
+      timezones: timezones.map((t) => t.timeZone),
+    }, {
+      headers: { 'Cache-Control': 'private, max-age=300' },
     });
   } catch (error) {
     console.error('GET /api/calls/filters error:', error);

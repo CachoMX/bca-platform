@@ -6,6 +6,7 @@ import {
   Plus,
   Pencil,
   UserX,
+  UserCheck,
   Search,
   Users,
   Clock,
@@ -40,6 +41,7 @@ import {
   useCreateUser,
   useUpdateUser,
   useDeleteUser,
+  useActivateUser,
   useUserSchedule,
   useUpdateSchedule,
   type User,
@@ -48,19 +50,18 @@ import {
 
 const ROLES: { value: number; label: string }[] = [
   { value: 1, label: 'Admin' },
-  { value: 2, label: 'Manager' },
-  { value: 3, label: 'Closer' },
-  { value: 4, label: 'Rep' },
+  { value: 2, label: 'Closer' },
+  { value: 3, label: 'Remote Agent' },
 ];
 
 function getRoleBadge(role: number) {
   const roleMap: Record<number, { label: string; variant: 'default' | 'success' | 'warning' | 'outline' }> = {
     1: { label: 'Admin', variant: 'default' },
-    2: { label: 'Manager', variant: 'success' },
-    3: { label: 'Closer', variant: 'warning' },
-    4: { label: 'Rep', variant: 'outline' },
+    2: { label: 'Closer', variant: 'success' },
+    3: { label: 'Remote Agent', variant: 'warning' },
   };
-  const info = roleMap[role] ?? { label: 'Unknown', variant: 'outline' as const };
+  const info = roleMap[role];
+  if (!info) return null; // Don't show badge for legacy roles (4=Disabled, 5=Importer)
   return <Badge variant={info.variant}>{info.label}</Badge>;
 }
 
@@ -91,7 +92,7 @@ const INITIAL_FORM: UserFormState = {
   lastname: '',
   email: '',
   password: '',
-  role: 4,
+  role: 3,
   timezone: 'America/New_York',
   city: '',
   state: '',
@@ -106,7 +107,7 @@ export default function UsersPage() {
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('active');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -122,6 +123,7 @@ export default function UsersPage() {
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
+  const activateUser = useActivateUser();
   const updateSchedule = useUpdateSchedule();
 
   const { data: userSchedule } = useUserSchedule(editingUser?.userId ?? 0);
@@ -250,6 +252,10 @@ export default function UsersPage() {
     await deleteUser.mutateAsync(deactivatingUser.userId);
     setDeactivateDialogOpen(false);
     setDeactivatingUser(null);
+  }
+
+  async function handleActivate(user: User) {
+    await activateUser.mutateAsync(user.userId);
   }
 
   const isSaving = createUser.isPending || updateUser.isPending;
@@ -386,7 +392,7 @@ export default function UsersPage() {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    {user.isActive && (
+                    {user.isActive ? (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -394,6 +400,16 @@ export default function UsersPage() {
                         onClick={() => openDeactivateDialog(user)}
                       >
                         <UserX className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-[var(--success)] hover:text-[var(--success)]"
+                        onClick={() => handleActivate(user)}
+                        disabled={activateUser.isPending}
+                      >
+                        <UserCheck className="h-4 w-4" />
                       </Button>
                     )}
                   </div>

@@ -23,7 +23,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           include: { role: true },
         });
 
-        // Old app convention: Status=0/NULL means active, Status=1 means blocked
+        // Status convention: status=true means blocked/inactive, null/false means active
         if (!user || user.status === true) return null;
 
         if (!user.password) return null;
@@ -36,11 +36,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!passwordValid) return null;
 
+        // Load permissions for this role from DB
+        const rolePerms = await prisma.rolePermission.findMany({
+          where: { idRole: user.idRole ?? 0, enabled: true },
+          select: { permissionKey: true },
+        });
+
         return {
           id: String(user.idUser),
           name: `${user.name} ${user.lastname}`,
           email: user.email ?? '',
           role: user.idRole ?? undefined,
+          permissions: rolePerms.map((p) => p.permissionKey),
         };
       },
     }),
@@ -57,13 +64,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.role = (user as { role: number }).role;
         token.userId = Number(user.id);
+        token.permissions = (user as { permissions: string[] }).permissions;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { role: number }).role = token.role as number;
-        (session.user as { userId: number }).userId = token.userId as number;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const u = session.user as any;
+        u.role = token.role as number;
+        u.userId = token.userId as number;
+        u.permissions = (token.permissions as string[]) ?? [];
       }
       return session;
     },

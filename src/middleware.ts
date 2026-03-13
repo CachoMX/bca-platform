@@ -1,12 +1,8 @@
 import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
+import { getPermissionKeyForRoute, getPermissionKeyForApiRoute } from '@/config/permission-keys';
 
 const publicRoutes = ['/login', '/api/auth', '/api/sms/webhook'];
-
-// API routes that require admin role
-const adminApiRoutes = ['/api/users', '/api/import', '/api/settings'];
-// API routes that require admin or manager role
-const managerApiRoutes = ['/api/admin/time', '/api/reports'];
 
 export default auth((req) => {
   const host = req.headers.get('host') ?? '';
@@ -32,35 +28,25 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  const role = req.auth.user?.role as number | undefined;
+  const permissions = (req.auth.user as { permissions?: string[] })?.permissions;
 
-  // Admin-only page routes
-  const adminRoutes = ['/admin/users', '/admin/quotes', '/admin/rebuttals', '/admin/import'];
-  if (adminRoutes.some((route) => pathname.startsWith(route))) {
-    if (role !== 1) {
-      return NextResponse.redirect(new URL('/', req.url));
+  // If permissions exist in the JWT, enforce them
+  // If not (old session before permissions feature), allow through
+  if (permissions && permissions.length > 0) {
+    // Check page route permissions
+    if (!pathname.startsWith('/api/')) {
+      const permKey = getPermissionKeyForRoute(pathname);
+      if (permKey && !permissions.includes(permKey)) {
+        return NextResponse.redirect(new URL('/', req.url));
+      }
     }
-  }
 
-  // Admin + Manager page routes
-  const managerRoutes = ['/admin/time', '/reports'];
-  if (managerRoutes.some((route) => pathname.startsWith(route))) {
-    if (role !== 1 && role !== 2) {
-      return NextResponse.redirect(new URL('/', req.url));
-    }
-  }
-
-  // Admin-only API routes
-  if (adminApiRoutes.some((route) => pathname.startsWith(route))) {
-    if (role !== 1) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-  }
-
-  // Admin + Manager API routes
-  if (managerApiRoutes.some((route) => pathname.startsWith(route))) {
-    if (role !== 1 && role !== 2) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // Check API route permissions
+    if (pathname.startsWith('/api/')) {
+      const permKey = getPermissionKeyForApiRoute(pathname);
+      if (permKey && !permissions.includes(permKey)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
   }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getTodayRangePST } from '@/lib/time';
 import type { ClockStatus } from '@/types';
 
 function getStatus(log: {
@@ -50,14 +51,7 @@ export async function GET() {
     }
 
     const userId = (session.user as { userId: number }).userId;
-
-    // Get today's date in PST, then create midnight-UTC boundaries
-    // logDate is stored as midnight UTC (just the date)
-    const now = new Date();
-    const pstDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-    const todayStart = new Date(Date.UTC(pstDate.getFullYear(), pstDate.getMonth(), pstDate.getDate()));
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
+    const { todayStart, todayEnd } = getTodayRangePST();
 
     const log = await prisma.employeeTimeLog.findFirst({
       where: {

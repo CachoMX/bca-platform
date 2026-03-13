@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { ChevronDown, LogOut, Sun, Moon } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/components/theme-provider';
 import { cn } from '@/lib/utils';
 import { navigation, adminNavigation, type NavItem } from '@/config/navigation';
@@ -48,11 +49,11 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
 function CollapsibleNav({
   item,
   pathname,
-  userRole,
+  permissions,
 }: {
   item: NavItem;
   pathname: string;
-  userRole: number;
+  permissions: string[];
 }) {
   const isChildActive = item.children?.some(
     (child) =>
@@ -60,8 +61,10 @@ function CollapsibleNav({
   );
   const [open, setOpen] = useState(!!isChildActive);
 
-  const filteredChildren =
-    item.children?.filter((child) => child.roles.includes(userRole)) ?? [];
+  const hasPermissions = permissions.length > 0;
+  const filteredChildren = hasPermissions
+    ? (item.children?.filter((child) => permissions.includes(child.permissionKey)) ?? [])
+    : (item.children ?? []);
 
   if (filteredChildren.length === 0) return null;
 
@@ -111,15 +114,46 @@ export default function Sidebar() {
   const { data: session } = useSession();
   const { theme, toggleTheme } = useTheme();
 
-  const userRole = session?.user?.role ?? 0;
   const userName = session?.user?.name ?? 'User';
+  const userRole = (session?.user as { role?: number })?.role;
+  const userPermissions = (session?.user as { permissions?: string[] })?.permissions ?? [];
+  // If permissions are empty (old JWT before permissions system), fall back to role-based access
+  const hasPermissions = userPermissions.length > 0;
 
-  const filteredNav = navigation.filter((item) =>
-    item.roles.includes(userRole),
-  );
-  const filteredAdmin = adminNavigation.filter((item) =>
-    item.roles.includes(userRole),
-  );
+  // Fetch user photo for sidebar avatar
+  const { data: profile } = useQuery<{ photo: string | null }>({
+    queryKey: ['profile-photo'],
+    queryFn: async () => {
+      const res = await fetch('/api/profile');
+      if (!res.ok) return { photo: null };
+      return res.json();
+    },
+    enabled: !!session?.user,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch pending account count for admin badge
+  const { data: pendingData } = useQuery<{ count: number }>({
+    queryKey: ['pending-accounts'],
+    queryFn: async () => {
+      const res = await fetch('/api/users?status=pending');
+      if (!res.ok) return { count: 0 };
+      const users = await res.json();
+      return { count: Array.isArray(users) ? users.length : 0 };
+    },
+    enabled: hasPermissions ? userPermissions.includes('admin_users') : userRole === 1,
+    staleTime: 60 * 1000,
+  });
+  const pendingCount = pendingData?.count ?? 0;
+
+  const filteredNav = hasPermissions
+    ? navigation.filter((item) => userPermissions.includes(item.permissionKey))
+    : navigation;
+  const filteredAdmin = hasPermissions
+    ? adminNavigation.filter((item) => userPermissions.includes(item.permissionKey))
+    : userRole === 1
+      ? adminNavigation
+      : [];
 
   return (
     <aside
@@ -149,7 +183,7 @@ export default function Sidebar() {
                 key={item.label}
                 item={item}
                 pathname={pathname}
-                userRole={userRole}
+                permissions={userPermissions}
               />
             ) : (
               <NavLink key={item.href} item={item} pathname={pathname} />
@@ -174,7 +208,17 @@ export default function Sidebar() {
             </div>
             <div className="flex flex-col gap-0.5">
               {filteredAdmin.map((item) => (
-                <NavLink key={item.href} item={item} pathname={pathname} />
+                <div key={item.href} className="relative">
+                  <NavLink item={item} pathname={pathname} />
+                  {item.href === '/admin/users' && pendingCount > 0 && (
+                    <span
+                      className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white"
+                      style={{ backgroundColor: '#ef4444' }}
+                    >
+                      {pendingCount}
+                    </span>
+                  )}
+                </div>
               ))}
             </div>
           </>
@@ -186,26 +230,36 @@ export default function Sidebar() {
         className="flex items-center gap-3 border-t px-4 py-3"
         style={{ borderColor: 'var(--border)' }}
       >
-        <div
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-          style={{
-            backgroundColor: 'var(--accent-subtle)',
-            color: 'var(--accent)',
-          }}
-        >
-          {userName
-            .split(' ')
-            .map((n) => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2)}
-        </div>
-        <span
-          className="flex-1 truncate text-sm font-medium"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          {userName}
-        </span>
+        <Link href="/profile" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 -mx-1 transition-colors hover:bg-[var(--accent-subtle)]">
+          {profile?.photo ? (
+            <img
+              src={profile.photo}
+              alt={userName}
+              className="h-8 w-8 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+              style={{
+                backgroundColor: 'var(--accent-subtle)',
+                color: 'var(--accent)',
+              }}
+            >
+              {userName
+                .split(' ')
+                .map((n) => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2)}
+            </div>
+          )}
+          <span
+            className="flex-1 truncate text-sm font-medium"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            {userName}
+          </span>
+        </Link>
         <button
           onClick={toggleTheme}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors"

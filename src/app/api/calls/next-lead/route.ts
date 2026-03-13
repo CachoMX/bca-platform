@@ -46,15 +46,21 @@ export async function POST(request: NextRequest) {
 
     const whereClause = Prisma.join(conditions, ' AND ');
 
-    // Atomic SELECT+UPDATE using UPDLOCK+READPAST:
-    // - UPDLOCK: exclusively locks the selected row so no other transaction can read it
-    // - READPAST: other transactions skip already-locked rows instead of waiting
-    // This guarantees no two reps ever receive the same business, even under
-    // 100+ simultaneous requests.
+    // Atomic SELECT+UPDATE using CTE with UPDLOCK+READPAST and ORDER BY NEWID():
+    // - CTE selects a random row matching filters
+    // - UPDLOCK: exclusively locks the selected row
+    // - READPAST: other transactions skip already-locked rows
+    // - ORDER BY NEWID(): randomizes lead selection (matches legacy app behavior)
     const rows = await prisma.$queryRaw<LeadRow[]>(
       Prisma.sql`
-        UPDATE TOP(1) b
-        SET b.IdStatus = 1
+        ;WITH cte AS (
+          SELECT TOP(1) *
+          FROM Businesses WITH (UPDLOCK, READPAST)
+          WHERE ${whereClause}
+          ORDER BY NEWID()
+        )
+        UPDATE cte
+        SET IdStatus = 1
         OUTPUT
           inserted.IdBusiness,
           inserted.BusinessName,
@@ -64,8 +70,6 @@ export async function POST(request: NextRequest) {
           inserted.Industry,
           inserted.TimeZone,
           inserted.IdStatus
-        FROM Businesses b WITH (UPDLOCK, READPAST)
-        WHERE ${whereClause}
       `
     );
 

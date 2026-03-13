@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -91,12 +92,20 @@ export default function LoginPage() {
 
           {/* Password */}
           <div>
-            <label
-              htmlFor="password"
-              className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
-            >
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="password"
+                className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
+              >
+                Password
+              </label>
+              <Link
+                href="/forgot-password"
+                className="mb-1.5 text-xs font-medium text-[var(--accent)] hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <input
               id="password"
               type="password"
@@ -130,8 +139,16 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* Create account */}
+        <p className="mt-6 text-center text-sm text-[var(--text-secondary)]">
+          Don&apos;t have an account?{' '}
+          <Link href="/register" className="font-medium text-[var(--accent)] hover:underline">
+            Create one
+          </Link>
+        </p>
+
         {/* Footer */}
-        <p className="mt-8 text-center text-xs text-[var(--text-muted)]">
+        <p className="mt-4 text-center text-xs text-[var(--text-muted)]">
           Benjamin Chaise &amp; Associates
         </p>
       </div>

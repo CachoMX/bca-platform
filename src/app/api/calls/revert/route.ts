@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const idBusiness = body?.idBusiness;
+    const idCall = body?.idCall;
 
     if (!idBusiness || typeof idBusiness !== 'number') {
       return NextResponse.json(
@@ -19,18 +20,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Only revert if the business is currently locked (idStatus = 1)
-    const business = await prisma.business.findUnique({ where: { idBusiness } });
-    if (!business) {
-      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
-    }
-    if (business.idStatus !== 1) {
-      return NextResponse.json({ error: 'Business is not currently locked' }, { status: 400 });
-    }
+    await prisma.$transaction(async (tx) => {
+      // Delete the last logged call if provided
+      if (idCall && typeof idCall === 'number') {
+        await tx.call.delete({ where: { idCall } });
+      }
 
-    await prisma.business.update({
-      where: { idBusiness },
-      data: { idStatus: 3 },
+      // Revert business back to available
+      await tx.business.update({
+        where: { idBusiness },
+        data: { idStatus: 3 },
+      });
     });
 
     return NextResponse.json({ success: true });

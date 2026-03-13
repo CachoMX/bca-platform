@@ -1,9 +1,8 @@
-// User roles enum
+// User roles enum — matches database Roles table
 export enum UserRole {
   Admin = 1,
-  Manager = 2,
-  Closer = 3,
-  Rep = 4,
+  Closer = 2,
+  RemoteAgent = 3,
 }
 
 // API response types

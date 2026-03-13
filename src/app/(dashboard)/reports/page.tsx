@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { useSession } from 'next-auth/react';
 import {
   Phone,
@@ -10,8 +10,21 @@ import {
   Download,
   Filter,
   FileText,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
-import { ColumnDef } from '@tanstack/react-table';
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import Header from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,7 +38,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DataTable } from '@/components/ui/data-table';
 import {
   useReports,
   useReportsSummary,
@@ -38,6 +50,12 @@ import { useDispositions } from '@/hooks/use-calls';
 import { formatDate } from '@/lib/utils';
 
 const columns: ColumnDef<ReportRow, unknown>[] = [
+  {
+    id: 'expand',
+    header: '',
+    cell: () => null, // rendered manually in the custom table
+    size: 32,
+  },
   {
     accessorKey: 'callDate',
     header: 'Date',
@@ -56,6 +74,16 @@ const columns: ColumnDef<ReportRow, unknown>[] = [
     header: 'Disposition',
   },
   {
+    accessorKey: 'debtAmount',
+    header: 'Debt Amount',
+    cell: ({ getValue }) => {
+      const val = getValue() as string | null;
+      if (!val) return '\u2014';
+      const num = parseFloat(val);
+      return isNaN(num) ? val : `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    },
+  },
+  {
     accessorKey: 'dmakerName',
     header: 'Decision Maker',
     cell: ({ getValue }) => (getValue() as string) || '\u2014',
@@ -71,6 +99,44 @@ const columns: ColumnDef<ReportRow, unknown>[] = [
   },
 ];
 
+function DetailItem({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div>
+      <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{label}</p>
+      <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{value || '\u2014'}</p>
+    </div>
+  );
+}
+
+function ExpandedRow({ row }: { row: ReportRow }) {
+  const debtDisplay = row.debtAmount
+    ? `$${parseFloat(row.debtAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : null;
+
+  return (
+    <div className="grid grid-cols-2 gap-x-8 gap-y-3 px-4 py-4 sm:grid-cols-3 lg:grid-cols-4">
+      <DetailItem label="Call ID" value={String(row.idCall)} />
+      <DetailItem label="Date" value={formatDate(row.callDate)} />
+      <DetailItem label="Rep" value={row.repName} />
+      <DetailItem label="Disposition" value={row.disposition} />
+      <DetailItem label="Business Name" value={row.businessName} />
+      <DetailItem label="Business Phone" value={row.businessPhone} />
+      <DetailItem label="Business Address" value={row.businessAddress} />
+      <DetailItem label="Decision Maker" value={row.dmakerName} />
+      <DetailItem label="DM Phone" value={row.dmakerPhone} />
+      <DetailItem label="DM Email" value={row.dmakerEmail} />
+      <DetailItem label="Debtor Name" value={row.debtorName} />
+      <DetailItem label="Debt Amount" value={debtDisplay} />
+      <DetailItem label="Agreement Sent" value={row.agreementSent} />
+      <DetailItem label="Callback" value={row.callBack ? formatDate(row.callBack) : null} />
+      <DetailItem label="Closer" value={row.closerName} />
+      <div className="col-span-full">
+        <DetailItem label="Comments" value={row.comments} />
+      </div>
+    </div>
+  );
+}
+
 export default function ReportsPage() {
   const { data: session } = useSession();
   const userRole = (session?.user as { role?: number })?.role;
@@ -81,6 +147,7 @@ export default function ReportsPage() {
   const [endDate, setEndDate] = useState('');
   const [disposition, setDisposition] = useState('');
   const [appliedFilters, setAppliedFilters] = useState<ReportFilters>({});
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
   const { data: users } = useUsers();
   const { data: dispositions } = useDispositions();
@@ -317,9 +384,134 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
         ) : (
-          <DataTable columns={columns} data={rows} pageSize={15} />
+          <ReportsTable rows={rows} expandedRows={expandedRows} setExpandedRows={setExpandedRows} />
         )}
       </div>
     </>
+  );
+}
+
+function ReportsTable({
+  rows,
+  expandedRows,
+  setExpandedRows,
+}: {
+  rows: ReportRow[];
+  expandedRows: Set<number>;
+  setExpandedRows: React.Dispatch<React.SetStateAction<Set<number>>>;
+}) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const table = useReactTable({
+    data: rows,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting,
+    state: { sorting },
+    initialState: { pagination: { pageSize: 15 } },
+  });
+
+  function toggleRow(idCall: number) {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(idCall)) next.delete(idCall);
+      else next.add(idCall);
+      return next;
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+        <table className="w-full caption-bottom text-sm">
+          <thead className="bg-[var(--bg-secondary)]">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id} className="border-b border-[var(--border)]">
+                {headerGroup.headers.map((header) => (
+                  <th
+                    key={header.id}
+                    className="h-11 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]"
+                    style={header.id === 'expand' ? { width: 32 } : undefined}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="bg-[var(--bg-card)]">
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => {
+                const original = row.original;
+                const isExpanded = expandedRows.has(original.idCall);
+                return (
+                  <Fragment key={row.id}>
+                    <tr
+                      className="cursor-pointer border-b border-[var(--border)] transition-colors hover:bg-[var(--bg-elevated)]"
+                      onClick={() => toggleRow(original.idCall)}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <td
+                          key={cell.id}
+                          className="px-4 py-3 align-middle text-[var(--text-primary)]"
+                        >
+                          {cell.column.id === 'expand' ? (
+                            isExpanded ? (
+                              <ChevronDown className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                            )
+                          ) : (
+                            flexRender(cell.column.columnDef.cell, cell.getContext())
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    {isExpanded && (
+                      <tr className="border-b border-[var(--border)]">
+                        <td colSpan={columns.length} className="bg-[var(--bg-secondary)]">
+                          <ExpandedRow row={original} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={columns.length} className="h-24 text-center text-[var(--text-muted)]">
+                  No results.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between px-2">
+        <div className="text-sm text-[var(--text-muted)]">
+          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="icon" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} aria-label="First page">
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} aria-label="Previous page">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} aria-label="Next page">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} aria-label="Last page">
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

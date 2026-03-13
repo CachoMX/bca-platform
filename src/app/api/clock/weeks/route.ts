@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { getTodayRangePST } from '@/lib/time';
 
 /**
  * Get the Friday start date for the work week containing the given date.
@@ -20,9 +21,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const now = new Date();
-    const pstDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-    const currentFriday = getFridayStart(pstDate);
+    const { todayStart } = getTodayRangePST();
+    const currentFriday = getFridayStart(todayStart);
 
     // Generate week start dates (Fridays) for the last 24 months
     const weeks: { date: string; label: string }[] = [];

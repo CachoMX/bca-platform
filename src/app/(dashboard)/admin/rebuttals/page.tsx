@@ -257,14 +257,21 @@ export default function RebuttalsPage() {
                     {/* Expandable content */}
                     {isExpanded && (
                       <div
-                        className="border-t px-5 py-4 text-sm leading-relaxed whitespace-pre-wrap"
+                        className="border-t px-5 py-4 text-sm leading-relaxed"
                         style={{
                           borderColor: 'var(--border)',
                           backgroundColor: 'var(--bg-primary)',
                           color: 'var(--text-secondary)',
                         }}
                       >
-                        {stripHtml(r.content)}
+                        {r.content.includes('<table') ? (
+                          <div
+                            className="overflow-x-auto"
+                            dangerouslySetInnerHTML={{ __html: r.content }}
+                          />
+                        ) : (
+                          <span className="whitespace-pre-wrap">{stripHtml(r.content)}</span>
+                        )}
                       </div>
                     )}
                   </CardContent>

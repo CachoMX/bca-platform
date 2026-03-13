@@ -15,6 +15,19 @@ interface Quote {
   quote: string;
 }
 
+export interface LeaderboardEntry {
+  rank: number;
+  userId: number;
+  name: string;
+  potentialClients: number;
+}
+
+export interface DailyMetric {
+  date: string;
+  totalCalls: number;
+  potentialClients: number;
+}
+
 async function fetchDashboardStats(): Promise<DashboardStats> {
   const res = await fetch('/api/dashboard');
   if (!res.ok) throw new Error('Failed to fetch dashboard stats');
@@ -32,6 +45,30 @@ export function useDashboardStats() {
   return useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
     queryFn: fetchDashboardStats,
+  });
+}
+
+export function useLeaderboard(period: 'week' | 'month' | 'all' = 'month') {
+  return useQuery<LeaderboardEntry[]>({
+    queryKey: ['leaderboard', period],
+    queryFn: async () => {
+      const res = await fetch(`/api/dashboard/leaderboard?period=${period}`);
+      if (!res.ok) throw new Error('Failed to fetch leaderboard');
+      return res.json();
+    },
+    staleTime: 2 * 60 * 1000, // 2 min
+  });
+}
+
+export function useMyMetrics(range: 'week' | '2weeks' | 'month' = 'week') {
+  return useQuery<DailyMetric[]>({
+    queryKey: ['my-metrics', range],
+    queryFn: async () => {
+      const res = await fetch(`/api/dashboard/my-metrics?range=${range}`);
+      if (!res.ok) throw new Error('Failed to fetch metrics');
+      return res.json();
+    },
+    staleTime: 2 * 60 * 1000,
   });
 }
 

@@ -161,6 +161,21 @@ export function useDeleteUser() {
   });
 }
 
+export function useActivateUser() {
+  const qc = useQueryClient();
+  return useMutation<unknown, Error, number>({
+    mutationFn: (userId) =>
+      fetchJson(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: true }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
 export function useUpdateSchedule() {
   const qc = useQueryClient();
 

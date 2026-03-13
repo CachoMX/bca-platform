@@ -20,9 +20,18 @@ export interface ReportRow {
   callDate: string;
   repName: string;
   businessName: string;
+  businessPhone: string;
+  businessAddress: string;
   disposition: string;
   dmakerName: string | null;
+  dmakerPhone: string | null;
+  dmakerEmail: string | null;
   comments: string | null;
+  debtAmount: string | null;
+  debtorName: string | null;
+  agreementSent: string | null;
+  callBack: string | null;
+  closerName: string | null;
 }
 
 export interface ReportsSummary {

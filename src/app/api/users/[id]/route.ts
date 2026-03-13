@@ -45,7 +45,7 @@ export async function GET(
       name: user.name ?? '',
       lastname: user.lastname ?? '',
       email: user.email ?? '',
-      role: user.idRole ?? 4,
+      role: user.idRole ?? 3,
       isActive: user.status !== true,
       isPartTime: user.isPartTime === true,
       timezone: user.timeZone ?? '',
@@ -95,12 +95,16 @@ export async function PUT(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const { password, roleId, timezone, ...rest } = parsed.data;
+    const { password, roleId, timezone, sendEmail, ...rest } = parsed.data;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: Record<string, any> = {
       ...rest,
     };
+
+    if (sendEmail !== undefined) {
+      data.sendEmail = sendEmail ? 1 : 0;
+    }
 
     if (roleId !== undefined) {
       data.idRole = roleId;
@@ -112,6 +116,13 @@ export async function PUT(
 
     if (password) {
       data.password = await bcrypt.hash(password, 10);
+    }
+
+    // Handle activate/deactivate via isActive field
+    if (body.isActive === true) {
+      data.status = false; // active
+    } else if (body.isActive === false) {
+      data.status = true; // blocked
     }
 
     // Check email uniqueness if email is being changed

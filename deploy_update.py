@@ -10,7 +10,7 @@ import time
 
 FTP_HOST = "192.185.7.4"
 FTP_USER = "benjaise"
-FTP_PASS = "xagE0QUkb2g^@yh4"
+FTP_PASS = "Gx$~vxyU7yT37xuq"
 REMOTE_DIR = "/httpdocs"
 LOCAL_DIR = os.path.join(
     os.path.dirname(__file__),
@@ -21,7 +21,7 @@ LOCAL_DIR = os.path.join(
 LOCAL_NEXT = os.path.join(LOCAL_DIR, ".next")
 REMOTE_NEXT = f"{REMOTE_DIR}/.next"
 
-SKIP_PATTERNS = [".mp4", "__pycache__"]
+SKIP_PATTERNS = ["__pycache__"]
 
 
 def ftp_connect():
@@ -116,12 +116,50 @@ def main():
         print(f"ERROR: .next directory not found: {LOCAL_NEXT}")
         sys.exit(1)
 
+    # Copy static files into standalone build (Next.js doesn't include them automatically)
+    import shutil
+    static_src = os.path.join(os.path.dirname(__file__), ".next", "static")
+    static_dst = os.path.join(LOCAL_NEXT, "static")
+    if os.path.isdir(static_src):
+        if os.path.isdir(static_dst):
+            shutil.rmtree(static_dst)
+        shutil.copytree(static_src, static_dst)
+        print(f"Copied static assets into standalone build.")
+
     total_files = count_files(LOCAL_NEXT)
     print(f"Files to upload: {total_files}")
 
     print("Connecting to FTP...")
     ftp = ftp_connect()
     print(f"Connected.")
+
+    # Sync Prisma client (schema may have changed)
+    print("\nSyncing Prisma client...")
+    import glob
+    prisma_pattern = os.path.join(
+        os.path.dirname(__file__), "node_modules", ".pnpm",
+        "@prisma+client@*", "node_modules", ".prisma", "client"
+    )
+    prisma_dirs = glob.glob(prisma_pattern)
+    if prisma_dirs:
+        prisma_src = prisma_dirs[0]
+        remote_prisma = f"{REMOTE_DIR}/node_modules/.prisma/client"
+        for fname in os.listdir(prisma_src):
+            fpath = os.path.join(prisma_src, fname)
+            if os.path.isfile(fpath) and (fname.endswith('.js') or fname.endswith('.json') or fname.endswith('.prisma') or fname.endswith('.mjs')):
+                with open(fpath, "rb") as f:
+                    ftp.storbinary(f"STOR {remote_prisma}/{fname}", f)
+        print("Prisma client synced.")
+    else:
+        print("WARNING: Prisma client not found locally, skipping sync.")
+
+    # Upload public directory (videos, images, etc.)
+    public_dir = os.path.join(os.path.dirname(__file__), "public")
+    if os.path.isdir(public_dir):
+        print("\nUploading public/ assets...")
+        public_stats = {"current": 0, "total": count_files(public_dir), "uploaded": 0, "errors": 0}
+        upload_directory(ftp, public_dir, REMOTE_DIR, public_stats)
+        print(f"Public assets uploaded ({public_stats['current']} files).")
 
     # Skip cleaning — just overwrite files in-place to avoid locked file errors
 
@@ -155,6 +193,13 @@ NODE_ENV=production
     from io import BytesIO as _BytesIO
     ftp.storbinary(f"STOR {REMOTE_DIR}/.env", _BytesIO(env_content.encode("utf-8")))
     print("Production .env uploaded.")
+
+    # Upload web.config
+    web_config_path = os.path.join(os.path.dirname(__file__), "web.config")
+    if os.path.exists(web_config_path):
+        with open(web_config_path, "rb") as f:
+            ftp.storbinary(f"STOR {REMOTE_DIR}/web.config", f)
+        print("web.config uploaded.")
 
     # Generate iisnode-compatible server.js from the standalone build
     print("\nGenerating iisnode-compatible server.js...")

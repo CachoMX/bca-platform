@@ -30,12 +30,10 @@ export async function GET(request: NextRequest) {
       }
     }
     if (startDate) {
-      conditions.push(Prisma.sql`c.CallDate >= ${new Date(startDate)}`);
+      conditions.push(Prisma.sql`c.CallDate >= ${new Date(startDate + 'T00:00:00.000Z')}`);
     }
     if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      conditions.push(Prisma.sql`c.CallDate <= ${end}`);
+      conditions.push(Prisma.sql`c.CallDate <= ${new Date(endDate + 'T23:59:59.999Z')}`);
     }
 
     const whereClause = conditions.length > 0

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { timeEditSchema } from '@/lib/validators';
+import { timeStringToUtcDate } from '@/lib/time';
 
 const VALID_FIELDS = [
   'clockIn',
@@ -56,9 +57,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Parse the target date
+    // Parse the target date as UTC midnight (matches logDate storage convention)
     const dateParts = date.split('-').map(Number);
-    const targetDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+    const targetDate = new Date(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2]));
     const targetDateEnd = new Date(targetDate);
     targetDateEnd.setDate(targetDateEnd.getDate() + 1);
 
@@ -83,10 +84,8 @@ export async function POST(request: Request) {
     // Get the current (old) value for the audit trail
     const oldValueRaw = log[field as keyof typeof log] as Date | null;
 
-    // Build the new DateTime from the date + HH:mm value
-    const [hours, minutes] = value.split(':').map(Number);
-    const newDateTime = new Date(targetDate);
-    newDateTime.setHours(hours, minutes, 0, 0);
+    // Build UTC-epoch Date where UTC hours = PST hours (for TIME column storage)
+    const newDateTime = timeStringToUtcDate(value);
 
     // Update the time log and create audit record in a transaction
     const [updatedLog] = await prisma.$transaction([

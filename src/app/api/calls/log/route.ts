@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logCallSchema } from '@/lib/validators';
 import { Prisma } from '@prisma/client';
+import { sendEmail, buildCallEmailHTML } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,18 +72,121 @@ export async function POST(request: NextRequest) {
     const call = await prisma.$transaction(async (tx) => {
       const newCall = await tx.call.create({ data: callData });
 
-      // Release the business back to available (idStatus = 3)
+      // Mark business as called (idStatus = 2) — matches legacy stored procedure behavior
       await tx.business.update({
         where: { idBusiness: data.idBusiness },
-        data: { idStatus: 3 },
+        data: { idStatus: 2 },
       });
 
       return newCall;
     });
+
+    // Send email notification for Potential Client (4) and Info Request (10)
+    if (data.idDisposition === 4 || data.idDisposition === 10) {
+      // Fire-and-forget: don't block the response
+      sendCallNotificationEmail(data, userId).catch((err) =>
+        console.error('Email notification error:', err)
+      );
+    }
 
     return NextResponse.json(call, { status: 201 });
   } catch (error) {
     console.error('POST /api/calls/log error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+async function sendCallNotificationEmail(
+  data: {
+    idBusiness: number;
+    idDisposition: number;
+    idCloser?: number;
+    dmakerName?: string;
+    dmakerEmail?: string;
+    dmakerPhone?: string;
+    debtorName?: string;
+    debtAmount?: number;
+    agreementSent?: boolean;
+    callBack?: string;
+    comments?: string;
+  },
+  callerUserId: number
+) {
+  // Get business info
+  const business = await prisma.business.findUnique({
+    where: { idBusiness: data.idBusiness },
+    select: { businessName: true, phone: true, address: true },
+  });
+
+  // Get the caller's name
+  const caller = await prisma.user.findUnique({
+    where: { idUser: callerUserId },
+    select: { name: true, lastname: true },
+  });
+
+  // Get the closer (TO recipient)
+  let closerUser: { name: string | null; lastname: string | null; email: string | null } | null = null;
+  if (data.idCloser) {
+    closerUser = await prisma.user.findUnique({
+      where: { idUser: data.idCloser },
+      select: { name: true, lastname: true, email: true },
+    });
+  }
+
+  // Get CC recipients (users with sendEmail = 1)
+  const ccUsers = await prisma.user.findMany({
+    where: { sendEmail: 1 },
+    select: { name: true, lastname: true, email: true },
+  });
+
+  const closerName = closerUser
+    ? `${closerUser.name} ${closerUser.lastname}`.trim()
+    : 'Team';
+  const callerName = caller
+    ? `${caller.name} ${caller.lastname}`.trim()
+    : 'Unknown';
+
+  const isPC = data.idDisposition === 4;
+  const typeLabel = isPC ? 'Potential Client' : 'Info Request';
+
+  const html = buildCallEmailHTML({
+    type: isPC ? 'potential-client' : 'info-request',
+    closerName,
+    fromName: callerName,
+    businessName: business?.businessName || 'Unknown',
+    businessPhone: business?.phone || 'N/A',
+    businessAddress: business?.address || 'N/A',
+    dmName: data.dmakerName || 'N/A',
+    dmPhone: data.dmakerPhone || 'N/A',
+    dmEmail: data.dmakerEmail || 'N/A',
+    comments: data.comments || '',
+    debtorName: data.debtorName || 'N/A',
+    amountOwed: data.debtAmount != null ? `$${data.debtAmount.toFixed(2)}` : 'N/A',
+    agreementSent: data.agreementSent != null ? (data.agreementSent ? 'Yes' : 'No') : 'N/A',
+    callBackDate: data.callBack || 'N/A',
+  });
+
+  const subject = `${typeLabel} - ${business?.businessName || 'Unknown Business'}`;
+
+  // Build TO list: closer first, then CC users
+  const to: { email: string; name: string }[] = [];
+  if (closerUser?.email) {
+    to.push({ email: closerUser.email, name: closerName });
+  }
+
+  const cc: { email: string; name: string }[] = ccUsers
+    .filter((u) => u.email && u.email !== closerUser?.email)
+    .map((u) => ({ email: u.email!, name: `${u.name} ${u.lastname}`.trim() }));
+
+  // If no closer, send to CC users as TO instead
+  if (to.length === 0 && cc.length > 0) {
+    to.push(cc.shift()!);
+  }
+
+  if (to.length === 0) {
+    console.warn('No email recipients found, skipping notification');
+    return;
+  }
+
+  await sendEmail({ to, cc, subject, html });
 }

@@ -49,12 +49,8 @@ export async function GET(request: NextRequest) {
 
     if (startDate || endDate) {
       const dateFilter: Record<string, Date> = {};
-      if (startDate) dateFilter.gte = new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateFilter.lte = end;
-      }
+      if (startDate) dateFilter.gte = new Date(startDate + 'T00:00:00.000Z');
+      if (endDate) dateFilter.lte = new Date(endDate + 'T23:59:59.999Z');
       where.callDate = dateFilter;
     }
 
@@ -121,8 +117,9 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           user: { select: { name: true, lastname: true } },
-          business: { select: { businessName: true } },
+          business: { select: { businessName: true, phone: true, address: true } },
           disposition: { select: { disposition: true } },
+          closer: { select: { name: true, lastname: true } },
         },
         orderBy: { callDate: 'desc' },
         skip: (page - 1) * pageSize,
@@ -137,9 +134,18 @@ export async function GET(request: NextRequest) {
       callDate: c.callDate.toISOString(),
       repName: `${c.user.name ?? ''} ${c.user.lastname ?? ''}`.trim(),
       businessName: c.business.businessName ?? '',
+      businessPhone: c.business.phone ?? '',
+      businessAddress: c.business.address ?? '',
       disposition: c.disposition?.disposition ?? '',
       dmakerName: c.dMakerName ?? null,
+      dmakerPhone: c.dMPhone ?? null,
+      dmakerEmail: c.dMEmail ?? null,
       comments: c.comments ?? null,
+      debtAmount: c.pDebtorAmmount ?? null,
+      debtorName: c.pDebtorName ?? null,
+      agreementSent: c.agreementSent ?? null,
+      callBack: c.callBack?.toISOString() ?? null,
+      closerName: c.closer ? `${c.closer.name ?? ''} ${c.closer.lastname ?? ''}`.trim() : null,
     }));
 
     return NextResponse.json({

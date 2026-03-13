@@ -41,6 +41,8 @@ import {
   Mail,
   Calendar,
   PhoneCall,
+  Search,
+  X,
 } from 'lucide-react';
 import Header from '@/components/layout/header';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -184,9 +186,13 @@ export default function CallsPage() {
   const [lead, setLead] = useState<LeadBusiness | null>(null);
   const [previousLead, setPreviousLead] = useState<LeadBusiness | null>(null);
   const [selectedDisposition, setSelectedDisposition] = useState<number | null>(null);
+  const [lastCallId, setLastCallId] = useState<number | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
   const [rebuttalsOpen, setRebuttalsOpen] = useState(true);
   const [selectedRebuttalId, setSelectedRebuttalId] = useState<number | null>(null);
+  const [phoneSearch, setPhoneSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<LeadBusiness[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   /* ---- Form ---- */
   const {
@@ -204,12 +210,8 @@ export default function CallsPage() {
     setToast({ message, type });
   }, []);
 
-  /* ---- Get next lead ---- */
-  const fetchLead = useCallback(() => {
-    if (!timezone) {
-      showToast('Please select a timezone first.', 'error');
-      return;
-    }
+  /* ---- Fetch a new lead from the server ---- */
+  const doFetchLead = useCallback(() => {
     nextLead.mutate(
       { timezone, industry: industry && industry !== 'random' ? industry : undefined },
       {
@@ -219,8 +221,8 @@ export default function CallsPage() {
           reset(defaultValues);
         },
         onError: (err) => {
-          if (err.message.includes('No leads')) {
-            setLead(null);
+          setLead(null);
+          if (err.message.includes('No leads') || err.message.includes('404')) {
             showToast('No leads available for the selected filters.', 'error');
           } else {
             showToast(err.message || 'Failed to fetch lead.', 'error');
@@ -230,15 +232,48 @@ export default function CallsPage() {
     );
   }, [timezone, industry, nextLead, reset, showToast]);
 
+  /* ---- Search by phone ---- */
+  const doPhoneSearch = useCallback(async () => {
+    const digits = phoneSearch.replace(/\D/g, '');
+    if (digits.length < 4) {
+      showToast('Enter at least 4 digits to search.', 'error');
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/businesses?search=${encodeURIComponent(digits)}&status=all&pageSize=10`);
+      if (!res.ok) throw new Error('Search failed');
+      const data = await res.json();
+      setSearchResults(data.data ?? []);
+      if ((data.data ?? []).length === 0) {
+        showToast('No businesses found for that phone number.', 'error');
+      }
+    } catch {
+      showToast('Failed to search businesses.', 'error');
+    } finally {
+      setIsSearching(false);
+    }
+  }, [phoneSearch, showToast]);
+
+  const loadFromSearch = useCallback((business: LeadBusiness) => {
+    setLead(business);
+    setSelectedDisposition(null);
+    reset(defaultValues);
+    setSearchResults(null);
+    setPhoneSearch('');
+    showToast(`Loaded: ${business.businessName}`, 'success');
+  }, [reset, showToast]);
+
   /* ---- Revert last ---- */
   const handleRevert = useCallback(() => {
     if (!previousLead) return;
     revertBusiness.mutate(
-      { idBusiness: previousLead.idBusiness },
+      { idBusiness: previousLead.idBusiness, idCall: lastCallId ?? undefined },
       {
         onSuccess: () => {
           setLead(previousLead);
           setPreviousLead(null);
+          setLastCallId(null);
           setSelectedDisposition(null);
           reset(defaultValues);
           showToast('Business reverted successfully.', 'success');
@@ -246,7 +281,7 @@ export default function CallsPage() {
         onError: () => showToast('Failed to revert.', 'error'),
       },
     );
-  }, [previousLead, revertBusiness, reset, showToast]);
+  }, [previousLead, lastCallId, revertBusiness, reset, showToast]);
 
   /* ---- Submit call ---- */
   const onSubmit = useCallback(
@@ -281,9 +316,10 @@ export default function CallsPage() {
       }
 
       logCall.mutate(payload, {
-        onSuccess: () => {
+        onSuccess: (result) => {
           showToast('Call logged successfully!', 'success');
           setPreviousLead(lead);
+          setLastCallId(result.idCall);
           setLead(null);
           setSelectedDisposition(null);
           reset(defaultValues);
@@ -308,11 +344,34 @@ export default function CallsPage() {
     [lead, selectedDisposition, logCall, nextLead, timezone, industry, reset, showToast],
   );
 
-  /* ---- Quick submit for dispositions without a form ---- */
-  const handleQuickSubmit = useCallback(() => {
-    if (!lead || selectedDisposition === null) return;
+  /* ---- Unified main button handler ---- */
+  const handleMainButton = useCallback(() => {
+    if (!timezone) {
+      showToast('Please select a timezone first.', 'error');
+      return;
+    }
+
+    // No lead loaded yet → just fetch one
+    if (!lead) {
+      doFetchLead();
+      return;
+    }
+
+    // Lead loaded but no disposition selected → error
+    if (selectedDisposition === null) {
+      showToast('Please select a disposition before getting the next lead.', 'error');
+      return;
+    }
+
+    // Has disposition with form (Potential Client, Info Request, Call Back) → handled by form submit
+    if (DISPOSITIONS_WITH_FORM.has(selectedDisposition)) {
+      handleSubmit(onSubmit)();
+      return;
+    }
+
+    // Quick disposition (no form) → log and get next
     onSubmit(defaultValues);
-  }, [lead, selectedDisposition, onSubmit]);
+  }, [timezone, lead, selectedDisposition, doFetchLead, showToast, handleSubmit, onSubmit]);
 
   /* ---- Determine which form fields to show ---- */
   const showDecisionMaker = DISPOSITIONS_WITH_FORM.has(selectedDisposition ?? -1);
@@ -388,19 +447,21 @@ export default function CallsPage() {
                     )}
                   </div>
 
-                  {/* Get Lead Button */}
+                  {/* Unified Main Button: Get Lead / Log & Next Call */}
                   <Button
-                    onClick={fetchLead}
-                    disabled={!timezone || nextLead.isPending}
+                    onClick={handleMainButton}
+                    disabled={!timezone || isSubmitting}
                     size="lg"
                     className="shrink-0"
                   >
-                    {nextLead.isPending ? (
+                    {isSubmitting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : lead ? (
+                      <CheckCircle2 className="h-4 w-4" />
                     ) : (
                       <PhoneCall className="h-4 w-4" />
                     )}
-                    Get Lead
+                    {lead ? (showFullForm ? getSubmitLabel(selectedDisposition) : 'Log & Next Call') : 'Get Lead'}
                   </Button>
 
                   {/* Revert Button */}
@@ -418,6 +479,84 @@ export default function CallsPage() {
                       )}
                       Revert Last
                     </Button>
+                  )}
+                </div>
+
+                {/* Phone Search */}
+                <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+                  <div className="flex items-end gap-3">
+                    <div className="min-w-[240px] flex-1">
+                      <Label className="mb-1.5 block text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        Search by Phone Number
+                      </Label>
+                      <div className="relative">
+                        <Search
+                          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+                          style={{ color: 'var(--text-muted)' }}
+                        />
+                        <Input
+                          placeholder="Enter phone number..."
+                          value={phoneSearch}
+                          onChange={(e) => setPhoneSearch(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') doPhoneSearch(); }}
+                          className="pl-9"
+                        />
+                        {phoneSearch && (
+                          <button
+                            type="button"
+                            onClick={() => { setPhoneSearch(''); setSearchResults(null); }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2"
+                            style={{ color: 'var(--text-muted)' }}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={doPhoneSearch}
+                      disabled={isSearching || phoneSearch.replace(/\D/g, '').length < 4}
+                      className="shrink-0"
+                    >
+                      {isSearching ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
+                      Search
+                    </Button>
+                  </div>
+
+                  {/* Search Results */}
+                  {searchResults && searchResults.length > 0 && (
+                    <div
+                      className="mt-3 max-h-60 overflow-y-auto rounded-lg border"
+                      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-primary)' }}
+                    >
+                      {searchResults.map((biz) => (
+                        <button
+                          key={biz.idBusiness}
+                          type="button"
+                          onClick={() => loadFromSearch(biz)}
+                          className="flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[var(--accent-subtle)]"
+                          style={{ borderColor: 'var(--border)' }}
+                        >
+                          <Phone className="h-4 w-4 shrink-0" style={{ color: 'var(--accent)' }} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                              {biz.businessName}
+                            </p>
+                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                              {formatPhone(biz.phone)} &middot; {biz.location || biz.timezone || 'N/A'}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="shrink-0 text-[10px]">
+                            Load
+                          </Badge>
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -625,7 +764,7 @@ export default function CallsPage() {
                           if (!selected) return null;
                           return (
                             <div
-                              className="mt-4 rounded-lg border p-4 text-sm leading-relaxed whitespace-pre-wrap"
+                              className="mt-4 rounded-lg border p-4 text-sm leading-relaxed"
                               style={{
                                 borderColor: 'var(--border)',
                                 backgroundColor: 'var(--bg-primary)',
@@ -638,7 +777,14 @@ export default function CallsPage() {
                               >
                                 {decodeEntities(selected.title)}
                               </h4>
-                              {stripHtml(selected.content)}
+                              {selected.content.includes('<table') ? (
+                                <div
+                                  className="overflow-x-auto"
+                                  dangerouslySetInnerHTML={{ __html: selected.content }}
+                                />
+                              ) : (
+                                <span className="whitespace-pre-wrap">{stripHtml(selected.content)}</span>
+                              )}
                             </div>
                           );
                         })()}
@@ -654,9 +800,8 @@ export default function CallsPage() {
             )}
 
             {/* ---- Dynamic Form ---- */}
-            {lead && selectedDisposition !== null && (
-              <form onSubmit={showFullForm ? handleSubmit(onSubmit) : undefined}>
-                {showFullForm && (
+            {lead && selectedDisposition !== null && showFullForm && (
+              <form onSubmit={(e) => { e.preventDefault(); handleSubmit(onSubmit)(); }}>
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base">Call Details</CardTitle>
@@ -859,25 +1004,6 @@ export default function CallsPage() {
                       )}
                     </CardContent>
                   </Card>
-                )}
-
-                {/* ---- Submit Bar ---- */}
-                <div className="mt-5">
-                  <Button
-                    type={showFullForm ? 'submit' : 'button'}
-                    onClick={showFullForm ? undefined : handleQuickSubmit}
-                    disabled={isSubmitting}
-                    size="lg"
-                    className="w-full sm:w-auto"
-                  >
-                    {isSubmitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
-                    )}
-                    {getSubmitLabel(selectedDisposition)}
-                  </Button>
-                </div>
               </form>
             )}
 

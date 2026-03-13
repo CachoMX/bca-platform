@@ -29,24 +29,29 @@ export async function GET(request: NextRequest) {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: Record<string, any> = {};
+    const where: Record<string, any> = { AND: [] };
 
     if (parsed.data.search) {
       const search = parsed.data.search;
-      where.OR = [
-        { name: { contains: search } },
-        { lastname: { contains: search } },
-        { email: { contains: search } },
-      ];
+      where.AND.push({
+        OR: [
+          { name: { contains: search } },
+          { lastname: { contains: search } },
+          { email: { contains: search } },
+        ],
+      });
     }
 
     const statusParam = searchParams.get('status');
-    // Old app convention: Status=0/NULL means active, Status=1 means blocked
+    // Active = status is null or false (not blocked)
+    // Inactive = status is true (blocked)
     if (statusParam === 'active') {
-      where.OR = [{ status: false }, { status: null }];
+      where.AND.push({ OR: [{ status: false }, { status: null }] });
     } else if (statusParam === 'inactive') {
-      where.status = true;
+      where.AND.push({ status: true });
     }
+
+    if (where.AND.length === 0) delete where.AND;
 
     const users = await prisma.user.findMany({
       where,
@@ -62,7 +67,7 @@ export async function GET(request: NextRequest) {
       name: user.name ?? '',
       lastname: user.lastname ?? '',
       email: user.email ?? '',
-      role: user.idRole ?? 4,
+      role: user.idRole ?? 3,
       isActive: user.status !== true,
       isPartTime: user.isPartTime === true,
       timezone: user.timeZone ?? '',
@@ -133,7 +138,7 @@ export async function POST(request: NextRequest) {
       name: user.name ?? '',
       lastname: user.lastname ?? '',
       email: user.email ?? '',
-      role: user.idRole ?? 4,
+      role: user.idRole ?? 3,
       isActive: user.status !== true,
       isPartTime: user.isPartTime === true,
       timezone: user.timeZone ?? '',

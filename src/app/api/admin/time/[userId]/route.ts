@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { clockWeekSchema } from '@/lib/validators';
+import { getTodayRangePST } from '@/lib/time';
 
 /**
  * Get the Friday start date for the work week containing the given date.
@@ -118,9 +119,8 @@ export async function GET(
       const inputDate = new Date(parts[0], parts[1] - 1, parts[2]);
       fridayStart = getFridayStart(inputDate);
     } else {
-      const now = new Date();
-      const pstDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-      fridayStart = getFridayStart(pstDate);
+      const { todayStart } = getTodayRangePST();
+      fridayStart = getFridayStart(todayStart);
     }
 
     const thursdayEnd = new Date(fridayStart);

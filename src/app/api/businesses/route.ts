@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { businessSearchSchema } from '@/lib/validators';
+
+interface BusinessRow {
+  IdBusiness: number;
+  BusinessName: string | null;
+  Phone: string | null;
+  Address: string | null;
+  Location: string | null;
+  Industry: string | null;
+  TimeZone: string | null;
+  IdStatus: number | null;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,46 +39,59 @@ export async function GET(request: NextRequest) {
 
     const { search, status, page, pageSize } = parsed.data;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: Record<string, any> = {};
+    // Build WHERE conditions
+    const conditions: Prisma.Sql[] = [];
 
-    // Status filter (matches legacy app: existing=7, excluded=4)
     if (status === 'existing') {
-      where.idStatus = 7;
+      conditions.push(Prisma.sql`b.IdStatus = 7`);
     } else if (status === 'available') {
-      where.idStatus = { notIn: [7, 4] };
+      conditions.push(Prisma.sql`b.IdStatus NOT IN (7, 4)`);
     }
-    // 'all' or undefined = no status filter
 
-    // Search filter
     if (search) {
-      where.OR = [
-        { businessName: { contains: search } },
-        { phone: { contains: search } },
-        { phoneDigits: { contains: search } },
-      ];
+      const digitsOnly = search.replace(/\D/g, '');
+      const looksLikePhone = digitsOnly.length >= 3 && digitsOnly.length / search.replace(/\s/g, '').length > 0.5;
+
+      if (looksLikePhone) {
+        // Phone search: search phoneDigits with contains (index on PhoneDigits helps narrow)
+        conditions.push(Prisma.sql`b.PhoneDigits LIKE '%' + ${digitsOnly} + '%'`);
+      } else {
+        // Name search: startsWith is fast with index
+        conditions.push(Prisma.sql`b.BusinessName LIKE ${search} + '%'`);
+      }
     }
 
-    const [businesses, total] = await Promise.all([
-      prisma.business.findMany({
-        where,
-        orderBy: { businessName: 'asc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      prisma.business.count({ where }),
+    const whereClause = conditions.length > 0
+      ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
+      : Prisma.empty;
+
+    const offset = (page - 1) * pageSize;
+
+    // Use raw SQL for optimal index usage on 3.5M rows
+    const [businesses, countResult] = await Promise.all([
+      prisma.$queryRaw<BusinessRow[]>`
+        SELECT b.IdBusiness, b.BusinessName, b.Phone, b.Address,
+               b.Location, b.Industry, b.TimeZone, b.IdStatus
+        FROM Businesses b ${whereClause}
+        ORDER BY b.BusinessName
+        OFFSET ${offset} ROWS FETCH NEXT ${pageSize} ROWS ONLY
+      `,
+      prisma.$queryRaw<[{ cnt: number }]>`
+        SELECT COUNT(*) as cnt FROM Businesses b ${whereClause}
+      `,
     ]);
 
-    // Transform to match frontend ClientBusiness interface
+    const total = Number(countResult[0]?.cnt ?? 0);
+
     const data = businesses.map((b) => ({
-      idBusiness: b.idBusiness,
-      businessName: b.businessName ?? '',
-      phone: b.phone ?? '',
-      address: b.address ?? '',
-      location: b.location ?? '',
-      industry: b.industry ?? '',
-      timezone: b.timeZone ?? '',
-      idStatus: b.idStatus ?? 0,
+      idBusiness: b.IdBusiness,
+      businessName: b.BusinessName ?? '',
+      phone: b.Phone ?? '',
+      address: b.Address ?? '',
+      location: b.Location ?? '',
+      industry: b.Industry ?? '',
+      timezone: b.TimeZone ?? '',
+      idStatus: b.IdStatus ?? 0,
     }));
 
     return NextResponse.json({
