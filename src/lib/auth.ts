@@ -2,6 +2,7 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from './prisma';
+import { rateLimit } from './rate-limit';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
@@ -17,6 +18,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const email = credentials.email as string;
         const password = credentials.password as string;
+
+        // Rate limit: 5 attempts per 15 minutes per email
+        const limiter = rateLimit(`login:${email}`, 5, 15 * 60 * 1000);
+        if (!limiter.success) return null;
 
         const user = await prisma.user.findUnique({
           where: { email },
@@ -35,6 +40,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           : user.password === password;
 
         if (!passwordValid) return null;
+
+        // Opportunistic re-hash: upgrade plaintext or weak-cost passwords to bcrypt 12
+        if (!isHashed) {
+          const hashed = await bcrypt.hash(password, 12);
+          await prisma.user.update({
+            where: { idUser: user.idUser },
+            data: { password: hashed },
+          });
+        }
 
         // Load permissions for this role from DB
         const rolePerms = await prisma.rolePermission.findMany({

@@ -115,7 +115,7 @@ export async function PUT(
     }
 
     if (password) {
-      data.password = await bcrypt.hash(password, 10);
+      data.password = await bcrypt.hash(password, 12);
     }
 
     // Handle activate/deactivate via isActive field

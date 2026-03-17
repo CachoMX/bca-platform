@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import DOMPurify from 'isomorphic-dompurify';
 /** Decode HTML entities (named and numeric) */
 function decodeEntities(text: string): string {
   return text
@@ -780,7 +781,7 @@ export default function CallsPage() {
                               {selected.content.includes('<table') ? (
                                 <div
                                   className="overflow-x-auto"
-                                  dangerouslySetInnerHTML={{ __html: selected.content }}
+                                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selected.content) }}
                                 />
                               ) : (
                                 <span className="whitespace-pre-wrap">{stripHtml(selected.content)}</span>

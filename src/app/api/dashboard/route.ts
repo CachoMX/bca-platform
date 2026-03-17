@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getTodayRangePST } from '@/lib/time';
 
 export async function GET() {
   try {
@@ -12,16 +13,14 @@ export async function GET() {
     const userId = (session.user as { userId: number }).userId;
     const role = (session.user as { role: number }).role;
 
-    // Calculate date boundaries
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
+    // Calculate date boundaries (PST-aware)
+    const { todayStart, todayEnd } = getTodayRangePST();
 
-    // Start of the week (Monday)
-    const dayOfWeek = now.getDay();
+    // Start of the week (Monday in PST)
+    const dayOfWeek = todayStart.getUTCDay();
     const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - mondayOffset);
+    const weekStart = new Date(todayStart);
+    weekStart.setUTCDate(weekStart.getUTCDate() - mondayOffset);
 
     // User stats
     const [todayCalls, weekCalls, callbacksDue] = await Promise.all([

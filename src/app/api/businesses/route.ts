@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
         OFFSET ${offset} ROWS FETCH NEXT ${pageSize} ROWS ONLY
       `,
       prisma.$queryRaw<[{ cnt: number }]>`
-        SELECT COUNT(*) as cnt FROM Businesses b ${whereClause}
+        SELECT CAST(COUNT(*) AS INT) as cnt FROM Businesses b ${whereClause}
       `,
     ]);
 

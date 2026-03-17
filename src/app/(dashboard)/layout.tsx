@@ -18,7 +18,7 @@ export default async function DashboardLayout({
     <AuthSessionProvider session={session}>
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="ml-[260px] flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 lg:ml-[260px] lg:p-6">
           {children}
         </main>
       </div>

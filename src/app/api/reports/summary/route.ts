@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     // Parameterized queries — safe from SQL injection
     const [countResult, topRepResult, topDispResult] = await Promise.all([
       prisma.$queryRaw<[{ cnt: bigint }]>`
-        SELECT COUNT(*) as cnt FROM dbo.Calls c ${whereClause}`,
+        SELECT CAST(COUNT(*) AS INT) as cnt FROM dbo.Calls c ${whereClause}`,
       prisma.$queryRaw<{ IdUser: number; cnt: bigint; Name: string; Lastname: string }[]>`
         SELECT TOP 1 c.IdUser, COUNT(*) as cnt, u.Name, u.Lastname
         FROM dbo.Calls c

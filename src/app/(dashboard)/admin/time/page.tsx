@@ -127,11 +127,18 @@ function breakMinutes(out?: string | null, inTime?: string | null): number | nul
   return null;
 }
 
-/** Live elapsed minutes from a start time to now. */
+/** Live elapsed minutes from a start time to now (PST-aware, max 24h). */
 function elapsedMinutes(start?: string | null): number {
   if (!start) return 0;
-  const startMs = new Date(start).getTime();
-  return Math.max(0, Math.round((Date.now() - startMs) / 60000));
+  // Extract hours:minutes from the ISO string and compare against current PST time
+  const d = new Date(start);
+  const startMinOfDay = d.getUTCHours() * 60 + d.getUTCMinutes();
+  // Current PST = UTC - 8 (stored as UTC-labeled PST, so compare directly in UTC)
+  const now = new Date();
+  const nowMinOfDay = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const diff = nowMinOfDay - startMinOfDay;
+  // Clamp to 0..1440 (one day max) to prevent negative or astronomically large values
+  return Math.max(0, Math.min(diff, 1440));
 }
 
 function formatDuration(mins: number | null): string {

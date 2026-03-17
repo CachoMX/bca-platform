@@ -1,17 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { ChevronDown, LogOut, Sun, Moon } from 'lucide-react';
+import { ChevronDown, LogOut, Sun, Moon, Menu, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/components/theme-provider';
 import { cn } from '@/lib/utils';
 import { navigation, adminNavigation, type NavItem } from '@/config/navigation';
 
-function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
+function NavLink({ item, pathname, onClick }: { item: NavItem; pathname: string; onClick?: () => void }) {
   const isActive =
     item.href === '/'
       ? pathname === '/'
@@ -20,6 +20,7 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
   return (
     <Link
       href={item.href}
+      onClick={onClick}
       className={cn(
         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
       )}
@@ -50,10 +51,12 @@ function CollapsibleNav({
   item,
   pathname,
   permissions,
+  onNavigate,
 }: {
   item: NavItem;
   pathname: string;
   permissions: string[];
+  onNavigate?: () => void;
 }) {
   const isChildActive = item.children?.some(
     (child) =>
@@ -101,7 +104,7 @@ function CollapsibleNav({
       {open && (
         <div className="ml-4 mt-1 flex flex-col gap-0.5 border-l pl-3" style={{ borderColor: 'var(--border)' }}>
           {filteredChildren.map((child) => (
-            <NavLink key={child.href} item={child} pathname={pathname} />
+            <NavLink key={child.href} item={child} pathname={pathname} onClick={onNavigate} />
           ))}
         </div>
       )}
@@ -113,14 +116,18 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { theme, toggleTheme } = useTheme();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const userName = session?.user?.name ?? 'User';
   const userRole = (session?.user as { role?: number })?.role;
   const userPermissions = (session?.user as { permissions?: string[] })?.permissions ?? [];
-  // If permissions are empty (old JWT before permissions system), fall back to role-based access
   const hasPermissions = userPermissions.length > 0;
 
-  // Fetch user photo for sidebar avatar
   const { data: profile } = useQuery<{ photo: string | null }>({
     queryKey: ['profile-photo'],
     queryFn: async () => {
@@ -132,7 +139,6 @@ export default function Sidebar() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch pending account count for admin badge
   const { data: pendingData } = useQuery<{ count: number }>({
     queryKey: ['pending-accounts'],
     queryFn: async () => {
@@ -155,14 +161,10 @@ export default function Sidebar() {
       ? adminNavigation
       : [];
 
-  return (
-    <aside
-      className="fixed left-0 top-0 z-40 flex h-screen w-[260px] flex-col border-r"
-      style={{
-        backgroundColor: 'var(--bg-secondary)',
-        borderColor: 'var(--border)',
-      }}
-    >
+  const closeMobile = () => setMobileOpen(false);
+
+  const sidebarContent = (
+    <>
       {/* Logo */}
       <div className="flex h-16 items-center gap-2.5 border-b px-5" style={{ borderColor: 'var(--border)' }}>
         <Image src="/pulse-icon.png" alt="PulseBC" width={28} height={28} />
@@ -172,6 +174,15 @@ export default function Sidebar() {
         >
           Pulse<span style={{ color: 'var(--text-primary)' }}>BC</span>
         </span>
+        {/* Close button on mobile */}
+        <button
+          onClick={closeMobile}
+          className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg lg:hidden"
+          style={{ color: 'var(--text-muted)' }}
+          aria-label="Close menu"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -184,9 +195,10 @@ export default function Sidebar() {
                 item={item}
                 pathname={pathname}
                 permissions={userPermissions}
+                onNavigate={closeMobile}
               />
             ) : (
-              <NavLink key={item.href} item={item} pathname={pathname} />
+              <NavLink key={item.href} item={item} pathname={pathname} onClick={closeMobile} />
             ),
           )}
         </div>
@@ -209,7 +221,7 @@ export default function Sidebar() {
             <div className="flex flex-col gap-0.5">
               {filteredAdmin.map((item) => (
                 <div key={item.href} className="relative">
-                  <NavLink item={item} pathname={pathname} />
+                  <NavLink item={item} pathname={pathname} onClick={closeMobile} />
                   {item.href === '/admin/users' && pendingCount > 0 && (
                     <span
                       className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white"
@@ -230,7 +242,7 @@ export default function Sidebar() {
         className="flex items-center gap-3 border-t px-4 py-3"
         style={{ borderColor: 'var(--border)' }}
       >
-        <Link href="/profile" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 -mx-1 transition-colors hover:bg-[var(--accent-subtle)]">
+        <Link href="/profile" onClick={closeMobile} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 -mx-1 transition-colors hover:bg-[var(--accent-subtle)]">
           {profile?.photo ? (
             <img
               src={profile.photo}
@@ -297,6 +309,46 @@ export default function Sidebar() {
           <LogOut className="h-4 w-4" />
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile hamburger button */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="fixed left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg border lg:hidden"
+        style={{
+          backgroundColor: 'var(--bg-card)',
+          borderColor: 'var(--border)',
+          color: 'var(--text-primary)',
+        }}
+        aria-label="Open menu"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={closeMobile}
+        />
+      )}
+
+      {/* Sidebar - always visible on lg+, slide-in on mobile */}
+      <aside
+        className={cn(
+          'fixed left-0 top-0 z-50 flex h-screen w-[260px] flex-col border-r transition-transform duration-300',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+        )}
+        style={{
+          backgroundColor: 'var(--bg-secondary)',
+          borderColor: 'var(--border)',
+        }}
+      >
+        {sidebarContent}
+      </aside>
+    </>
   );
 }

@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
           u.IdUser,
           u.Name,
           u.Lastname,
-          COUNT(*) AS PotentialClients
+          CAST(COUNT(*) AS INT) AS PotentialClients
         FROM dbo.Calls c
         INNER JOIN dbo.Users u ON u.IdUser = c.IdUser
         WHERE c.IdDisposition = 4

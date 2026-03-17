@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
       Prisma.sql`
         SELECT
           CONVERT(VARCHAR(10), c.CallDate, 120) AS Day,
-          COUNT(*) AS TotalCalls,
-          SUM(CASE WHEN c.IdDisposition = 4 THEN 1 ELSE 0 END) AS PotentialClients
+          CAST(COUNT(*) AS INT) AS TotalCalls,
+          CAST(SUM(CASE WHEN c.IdDisposition = 4 THEN 1 ELSE 0 END) AS INT) AS PotentialClients
         FROM dbo.Calls c
         WHERE c.IdUser = ${userId}
           AND c.CallDate >= ${startDate}

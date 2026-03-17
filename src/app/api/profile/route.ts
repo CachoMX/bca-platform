@@ -91,6 +91,15 @@ export async function PUT(request: NextRequest) {
       if (!passwordValid) {
         return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
       }
+
+      // Opportunistic re-hash: upgrade plaintext passwords to bcrypt 12
+      if (!isHashed) {
+        const hashed = await bcrypt.hash(currentPassword!, 12);
+        await prisma.user.update({
+          where: { idUser: userId },
+          data: { password: hashed },
+        });
+      }
     }
 
     // Build update data - only allowed fields (NOT email, NOT role)
@@ -105,7 +114,7 @@ export async function PUT(request: NextRequest) {
     if (country !== undefined) data.country = country;
 
     if (newPassword) {
-      data.password = await bcrypt.hash(newPassword, 10);
+      data.password = await bcrypt.hash(newPassword, 12);
     }
 
     const updatedUser = await prisma.user.update({

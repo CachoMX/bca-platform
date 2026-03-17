@@ -27,7 +27,7 @@ export async function GET() {
         GROUP BY PhoneNumber
       ) latest ON m.PhoneNumber = latest.PhoneNumber AND m.SentTime = latest.MaxTime
       LEFT JOIN (
-        SELECT PhoneNumber, COUNT(*) as unread
+        SELECT PhoneNumber, CAST(COUNT(*) AS INT) as unread
         FROM benjaise_sqluser2.Messages
         WHERE IsRead = 0 AND Direction = 'inbound'
         GROUP BY PhoneNumber

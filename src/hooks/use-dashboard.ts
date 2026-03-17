@@ -78,14 +78,9 @@ export function useQuoteOfDay() {
     queryFn: async () => {
       const quotes = await fetchQuotes();
       if (!quotes.length) return null;
-      // Use the current date as a seed so the quote stays consistent for the day
-      const today = new Date();
-      const dayIndex =
-        today.getFullYear() * 10000 +
-        (today.getMonth() + 1) * 100 +
-        today.getDate();
-      return quotes[dayIndex % quotes.length];
+      // Pick a random quote each time the user visits/refreshes
+      return quotes[Math.floor(Math.random() * quotes.length)];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity,
   });
 }

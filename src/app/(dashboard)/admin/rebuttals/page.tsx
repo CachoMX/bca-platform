@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import DOMPurify from 'isomorphic-dompurify';
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import Header from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -267,7 +268,7 @@ export default function RebuttalsPage() {
                         {r.content.includes('<table') ? (
                           <div
                             className="overflow-x-auto"
-                            dangerouslySetInnerHTML={{ __html: r.content }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(r.content) }}
                           />
                         ) : (
                           <span className="whitespace-pre-wrap">{stripHtml(r.content)}</span>

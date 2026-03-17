@@ -45,14 +45,14 @@ function formatShortDate(dateStr: string) {
 
 export default function DashboardPage() {
   const { data: session } = useSession();
-  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useDashboardStats();
   const { data: quoteOfDay, isLoading: quoteLoading } = useQuoteOfDay();
 
   const [lbPeriod, setLbPeriod] = useState<'week' | 'month' | 'all'>('month');
-  const { data: leaderboard, isLoading: lbLoading } = useLeaderboard(lbPeriod);
+  const { data: leaderboard, isLoading: lbLoading, isError: lbError } = useLeaderboard(lbPeriod);
 
   const [chartRange, setChartRange] = useState<'week' | '2weeks' | 'month'>('week');
-  const { data: myMetrics, isLoading: metricsLoading } = useMyMetrics(chartRange);
+  const { data: myMetrics, isLoading: metricsLoading, isError: metricsError } = useMyMetrics(chartRange);
 
   const userName = session?.user?.name ?? 'User';
   const userRole = (session?.user as { role?: number })?.role;
@@ -161,6 +161,12 @@ export default function DashboardPage() {
           <div className="flex items-center justify-center py-12">
             <Loading />
           </div>
+        ) : statsError ? (
+          <Card>
+            <CardContent className="py-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Failed to load stats. Please refresh.
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {statCards.map((stat) => (
@@ -236,6 +242,10 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-center py-12">
                   <Loading size="sm" />
                 </div>
+              ) : lbError ? (
+                <p className="py-8 text-center text-sm" style={{ color: 'var(--danger, #ef4444)' }}>
+                  Failed to load leaderboard.
+                </p>
               ) : !leaderboard?.length ? (
                 <p className="py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
                   No data yet for this period.
@@ -360,6 +370,10 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-center py-12">
                   <Loading size="sm" />
                 </div>
+              ) : metricsError ? (
+                <p className="py-12 text-center text-sm" style={{ color: 'var(--danger, #ef4444)' }}>
+                  Failed to load metrics.
+                </p>
               ) : !chartData.length ? (
                 <p className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
                   No calls recorded for this period.

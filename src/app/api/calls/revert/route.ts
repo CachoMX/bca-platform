@@ -9,6 +9,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const userId = (session.user as { userId: number }).userId;
+    const role = (session.user as { role: number }).role;
+
     const body = await request.json();
     const idBusiness = body?.idBusiness;
     const idCall = body?.idCall;
@@ -18,6 +21,14 @@ export async function POST(request: NextRequest) {
         { error: 'idBusiness is required and must be a number' },
         { status: 400 },
       );
+    }
+
+    // Verify ownership: the call must belong to this user (admins can revert any)
+    if (idCall && typeof idCall === 'number' && role !== 1) {
+      const call = await prisma.call.findUnique({ where: { idCall }, select: { idUser: true } });
+      if (!call || call.idUser !== userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
     await prisma.$transaction(async (tx) => {
