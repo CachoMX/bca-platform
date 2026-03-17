@@ -130,12 +130,17 @@ function breakMinutes(out?: string | null, inTime?: string | null): number | nul
 /** Live elapsed minutes from a start time to now (PST-aware, max 24h). */
 function elapsedMinutes(start?: string | null): number {
   if (!start) return 0;
-  // Extract hours:minutes from the ISO string and compare against current PST time
+  // Start time is PST stored as UTC-labeled (e.g., 09:50 PST → T09:50:00.000Z)
   const d = new Date(start);
   const startMinOfDay = d.getUTCHours() * 60 + d.getUTCMinutes();
-  // Current PST = UTC - 8 (stored as UTC-labeled PST, so compare directly in UTC)
-  const now = new Date();
-  const nowMinOfDay = now.getUTCHours() * 60 + now.getUTCMinutes();
+  // Get current PST time using Intl (handles DST automatically)
+  const pstParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    hour: 'numeric', minute: 'numeric', hour12: false,
+  }).formatToParts(new Date());
+  const nowH = parseInt(pstParts.find(p => p.type === 'hour')?.value ?? '0');
+  const nowM = parseInt(pstParts.find(p => p.type === 'minute')?.value ?? '0');
+  const nowMinOfDay = nowH * 60 + nowM;
   const diff = nowMinOfDay - startMinOfDay;
   // Clamp to 0..1440 (one day max) to prevent negative or astronomically large values
   return Math.max(0, Math.min(diff, 1440));

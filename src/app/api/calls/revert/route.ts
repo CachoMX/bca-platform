@@ -16,15 +16,15 @@ export async function POST(request: NextRequest) {
     const idBusiness = body?.idBusiness;
     const idCall = body?.idCall;
 
-    if (!idBusiness || typeof idBusiness !== 'number') {
+    if (!idBusiness || typeof idBusiness !== 'number' || !idCall || typeof idCall !== 'number') {
       return NextResponse.json(
-        { error: 'idBusiness is required and must be a number' },
+        { error: 'idBusiness and idCall are required and must be numbers' },
         { status: 400 },
       );
     }
 
     // Verify ownership: the call must belong to this user (admins can revert any)
-    if (idCall && typeof idCall === 'number' && role !== 1) {
+    if (role !== 1) {
       const call = await prisma.call.findUnique({ where: { idCall }, select: { idUser: true } });
       if (!call || call.idUser !== userId) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -32,10 +32,8 @@ export async function POST(request: NextRequest) {
     }
 
     await prisma.$transaction(async (tx) => {
-      // Delete the last logged call if provided
-      if (idCall && typeof idCall === 'number') {
-        await tx.call.delete({ where: { idCall } });
-      }
+      // Delete the call record
+      await tx.call.delete({ where: { idCall } });
 
       // Revert business back to available
       await tx.business.update({

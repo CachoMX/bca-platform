@@ -65,7 +65,7 @@ export function getTodayRangePST(): { todayStart: Date; todayEnd: Date } {
 
   const todayStart = new Date(Date.UTC(y, mo, d));
   const todayEnd = new Date(todayStart);
-  todayEnd.setDate(todayEnd.getDate() + 1);
+  todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
   return { todayStart, todayEnd };
 }
 

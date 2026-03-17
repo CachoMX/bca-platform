@@ -21,7 +21,7 @@ export default function Header({ title }: HeaderProps) {
 
   return (
     <header
-      className="sticky top-0 z-30 flex h-16 items-center justify-between border-b px-6"
+      className="sticky top-0 z-30 flex h-16 items-center justify-between border-b pl-14 pr-6 lg:px-6"
       style={{
         backgroundColor: 'var(--bg-primary)',
         borderColor: 'var(--border)',

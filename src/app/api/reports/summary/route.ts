@@ -49,14 +49,14 @@ export async function GET(request: NextRequest) {
       prisma.$queryRaw<[{ cnt: bigint }]>`
         SELECT CAST(COUNT(*) AS INT) as cnt FROM dbo.Calls c ${whereClause}`,
       prisma.$queryRaw<{ IdUser: number; cnt: bigint; Name: string; Lastname: string }[]>`
-        SELECT TOP 1 c.IdUser, COUNT(*) as cnt, u.Name, u.Lastname
+        SELECT TOP 1 c.IdUser, CAST(COUNT(*) AS INT) as cnt, u.Name, u.Lastname
         FROM dbo.Calls c
         JOIN dbo.Users u ON c.IdUser = u.IdUser
         ${whereClause}
         GROUP BY c.IdUser, u.Name, u.Lastname
         ORDER BY cnt DESC`,
       prisma.$queryRaw<{ IdDisposition: number; cnt: bigint; Disposition: string }[]>`
-        SELECT TOP 1 c.IdDisposition, COUNT(*) as cnt, d.Disposition
+        SELECT TOP 1 c.IdDisposition, CAST(COUNT(*) AS INT) as cnt, d.Disposition
         FROM dbo.Calls c
         JOIN dbo.Dispositions d ON c.IdDisposition = d.IdDisposition
         ${dispWhereClause}
