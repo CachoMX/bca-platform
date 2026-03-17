@@ -97,9 +97,14 @@ export function nowPstSeconds(): number {
 /**
  * Compute elapsed minutes between a stored time (Prisma Date from TIME column)
  * and the current PST time. Both are in PST convention.
+ * Handles midnight wraparound (e.g., stored 23:50, now 00:10 → 20 minutes).
  */
 export function minutesSinceStored(stored: Date): number {
   const storedSec = storedTimeToSeconds(stored);
   const currentSec = nowPstSeconds();
-  return Math.max(0, (currentSec - storedSec) / 60);
+  let diff = currentSec - storedSec;
+  if (diff < 0) {
+    diff += 24 * 3600; // wraparound past midnight
+  }
+  return diff / 60;
 }

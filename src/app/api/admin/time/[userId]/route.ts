@@ -40,23 +40,36 @@ function computeDayMetrics(log: TimeLogRow) {
 
   if (log.clockIn && log.clockOut) {
     const clockInMs = new Date(log.clockIn).getTime();
-    const clockOutMs = new Date(log.clockOut).getTime();
+    let clockOutMs = new Date(log.clockOut).getTime();
+    // Handle overnight shifts: if clockOut is before clockIn, add 24 hours
+    if (clockOutMs <= clockInMs) {
+      clockOutMs += 24 * 60 * 60 * 1000;
+    }
 
     let lunchMs = 0;
     if (log.lunchOut && log.lunchIn) {
-      lunchMs = new Date(log.lunchIn).getTime() - new Date(log.lunchOut).getTime();
+      const lunchOutMs = new Date(log.lunchOut).getTime();
+      let lunchInMs = new Date(log.lunchIn).getTime();
+      if (lunchInMs < lunchOutMs) lunchInMs += 24 * 60 * 60 * 1000;
+      lunchMs = lunchInMs - lunchOutMs;
       lunchDurationMinutes = lunchMs / (1000 * 60);
     }
 
     if (log.firstBreakOut && log.firstBreakIn) {
-      const breakMinutes = (new Date(log.firstBreakIn).getTime() - new Date(log.firstBreakOut).getTime()) / (1000 * 60);
+      const bOutMs = new Date(log.firstBreakOut).getTime();
+      let bInMs = new Date(log.firstBreakIn).getTime();
+      if (bInMs < bOutMs) bInMs += 24 * 60 * 60 * 1000;
+      const breakMinutes = (bInMs - bOutMs) / (1000 * 60);
       if (breakMinutes > 10) {
         firstBreakExcess = Math.round((breakMinutes - 10) * 100) / 100;
       }
     }
 
     if (log.secondBreakOut && log.secondBreakIn) {
-      const breakMinutes = (new Date(log.secondBreakIn).getTime() - new Date(log.secondBreakOut).getTime()) / (1000 * 60);
+      const bOutMs = new Date(log.secondBreakOut).getTime();
+      let bInMs = new Date(log.secondBreakIn).getTime();
+      if (bInMs < bOutMs) bInMs += 24 * 60 * 60 * 1000;
+      const breakMinutes = (bInMs - bOutMs) / (1000 * 60);
       if (breakMinutes > 10) {
         secondBreakExcess = Math.round((breakMinutes - 10) * 100) / 100;
       }

@@ -47,6 +47,7 @@ export function getPermissionKeyForApiRoute(pathname: string): string | null {
   if (pathname.startsWith('/api/admin/time')) return 'admin_time';
   if (pathname.startsWith('/api/admin/permissions')) return 'admin_permissions';
   if (pathname.startsWith('/api/reports')) return 'reports';
-  // SMS API has a public webhook, don't restrict at middleware level
+  // SMS API routes (excluding public webhook which is in publicRoutes)
+  if (pathname.startsWith('/api/sms') && !pathname.startsWith('/api/sms/webhook')) return 'sms';
   return null;
 }

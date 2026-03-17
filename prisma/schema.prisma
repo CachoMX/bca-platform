@@ -66,6 +66,7 @@ model Business {
 
   @@index([idStatus, industry], map: "IX_Businesses_Status_Industry")
   @@index([idStatus, timeZone], map: "IX_Businesses_Status_TimeZone")
+  @@index([businessName], map: "IX_Businesses_Name")
   @@map("Businesses")
   @@schema("dbo")
 }
@@ -103,6 +104,9 @@ model Call {
   disposition     Disposition? @relation(fields: [idDisposition], references: [idDisposition], onDelete: NoAction, onUpdate: NoAction)
   closer          User?       @relation("CloserCalls", fields: [idCloser], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([idUser, callDate], map: "IX_Calls_User_Date")
+  @@index([idDisposition, callDate], map: "IX_Calls_Disposition_Date")
+  @@index([callDate], map: "IX_Calls_Date")
   @@map("Calls")
   @@schema("dbo")
 }
@@ -146,6 +150,7 @@ model EmployeeTimeLog {
 
   user              User     @relation(fields: [idUser], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
 
+  @@unique([idUser, logDate], map: "UQ_EmployeeTimeLog_User_Date")
   @@map("EmployeeTimeLog")
   @@schema("benjaise_sqluser2")
 }
@@ -215,6 +220,7 @@ model VideoView {
   user     User     @relation(fields: [userId], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
   video    Video    @relation(fields: [videoId], references: [videoId], onDelete: NoAction, onUpdate: NoAction)
 
+  @@unique([userId, videoId], map: "UQ_VideoViews_User_Video")
   @@map("VideoViews")
   @@schema("benjaise_sqluser2")
 }
@@ -254,6 +260,7 @@ model Message {
   sentTime    DateTime @map("SentTime")
   isRead      Boolean? @default(false) @map("IsRead")
 
+  @@index([phoneNumber, sentTime], map: "IX_Messages_Phone_SentTime")
   @@map("Messages")
   @@schema("benjaise_sqluser2")
 }

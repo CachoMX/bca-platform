@@ -2,6 +2,16 @@ const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
 const FROM_EMAIL = 'noreply@yourdebtcollectors.com';
 const FROM_NAME = 'PulseBC Calling System';
 
+/** Escape user-supplied strings before interpolating into HTML emails. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 interface SendEmailParams {
   to: { email: string; name: string }[];
   cc?: { email: string; name: string }[];
@@ -58,6 +68,23 @@ interface CallEmailData {
 }
 
 export function buildCallEmailHTML(data: CallEmailData): string {
+  // Escape all user-supplied fields to prevent HTML injection
+  const safe = {
+    closerName: escapeHtml(data.closerName),
+    fromName: escapeHtml(data.fromName),
+    businessName: escapeHtml(data.businessName),
+    businessPhone: escapeHtml(data.businessPhone),
+    businessAddress: escapeHtml(data.businessAddress),
+    dmName: escapeHtml(data.dmName),
+    dmPhone: escapeHtml(data.dmPhone),
+    dmEmail: escapeHtml(data.dmEmail),
+    comments: escapeHtml(data.comments),
+    debtorName: escapeHtml(data.debtorName || 'N/A'),
+    amountOwed: escapeHtml(data.amountOwed || 'N/A'),
+    agreementSent: escapeHtml(data.agreementSent || 'N/A'),
+    callBackDate: escapeHtml(data.callBackDate || 'N/A'),
+  };
+
   const isPC = data.type === 'potential-client';
   const typeBadge = isPC ? 'POTENTIAL CLIENT' : 'INFO REQUEST';
   const greeting = isPC ? 'You Got a Potential Client!' : 'You Got an Info Request!';
@@ -75,21 +102,21 @@ export function buildCallEmailHTML(data: CallEmailData): string {
                   <tr>
                     <td width="50%" style="padding: 4px 0; vertical-align: top;">
                       <p style="margin: 0; font-size: 12px; color: #64748b; font-family: 'Inter', Arial, sans-serif;">Debtor Name</p>
-                      <p style="margin: 2px 0 0 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${data.debtorName || 'N/A'}</p>
+                      <p style="margin: 2px 0 0 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${safe.debtorName}</p>
                     </td>
                     <td width="50%" style="padding: 4px 0; vertical-align: top;">
                       <p style="margin: 0; font-size: 12px; color: #64748b; font-family: 'Inter', Arial, sans-serif;">Amount Owed</p>
-                      <p style="margin: 2px 0 0 0; font-size: 15px; color: #0f172a; font-weight: 700; font-family: 'Inter', Arial, sans-serif;">${data.amountOwed || 'N/A'}</p>
+                      <p style="margin: 2px 0 0 0; font-size: 15px; color: #0f172a; font-weight: 700; font-family: 'Inter', Arial, sans-serif;">${safe.amountOwed}</p>
                     </td>
                   </tr>
                   <tr>
                     <td width="50%" style="padding: 8px 0 4px 0; vertical-align: top;">
                       <p style="margin: 0; font-size: 12px; color: #64748b; font-family: 'Inter', Arial, sans-serif;">Agreement Sent?</p>
-                      <p style="margin: 2px 0 0 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${data.agreementSent || 'N/A'}</p>
+                      <p style="margin: 2px 0 0 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${safe.agreementSent}</p>
                     </td>
                     <td width="50%" style="padding: 8px 0 4px 0; vertical-align: top;">
                       <p style="margin: 0; font-size: 12px; color: #64748b; font-family: 'Inter', Arial, sans-serif;">Callback Date</p>
-                      <p style="margin: 2px 0 0 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${data.callBackDate || 'N/A'}</p>
+                      <p style="margin: 2px 0 0 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${safe.callBackDate}</p>
                     </td>
                   </tr>
                 </table>
@@ -133,9 +160,9 @@ export function buildCallEmailHTML(data: CallEmailData): string {
             <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 12px;">
               <tr>
                 <td style="padding: 32px;">
-                  <p style="margin: 0 0 4px 0; font-size: 14px; color: #94a3b8; font-family: 'Inter', Arial, sans-serif;">Hi, ${data.closerName}!</p>
+                  <p style="margin: 0 0 4px 0; font-size: 14px; color: #94a3b8; font-family: 'Inter', Arial, sans-serif;">Hi, ${safe.closerName}!</p>
                   <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 700; color: #ffffff; font-family: 'Inter', Arial, sans-serif;">${greeting}</h1>
-                  <p style="margin: 0; font-size: 13px; color: #64748b; font-family: 'Inter', Arial, sans-serif;">Submitted by <span style="color: #22d3ee; font-weight: 600;">${data.fromName}</span></p>
+                  <p style="margin: 0; font-size: 13px; color: #64748b; font-family: 'Inter', Arial, sans-serif;">Submitted by <span style="color: #22d3ee; font-weight: 600;">${safe.fromName}</span></p>
                 </td>
               </tr>
             </table>
@@ -151,11 +178,11 @@ export function buildCallEmailHTML(data: CallEmailData): string {
                       <td style="padding: 20px;">
                         <p style="margin: 0 0 14px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #0891b2; font-family: 'Inter', Arial, sans-serif;">Business Details</p>
                         <p style="margin: 0; font-size: 12px; color: #64748b;">Name</p>
-                        <p style="margin: 2px 0 10px 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${data.businessName}</p>
+                        <p style="margin: 2px 0 10px 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${safe.businessName}</p>
                         <p style="margin: 0; font-size: 12px; color: #64748b;">Phone</p>
-                        <p style="margin: 2px 0 10px 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${data.businessPhone}</p>
+                        <p style="margin: 2px 0 10px 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${safe.businessPhone}</p>
                         <p style="margin: 0; font-size: 12px; color: #64748b;">Address</p>
-                        <p style="margin: 2px 0 0 0; font-size: 14px; color: #0f172a; font-weight: 500; font-family: 'Inter', Arial, sans-serif;">${data.businessAddress}</p>
+                        <p style="margin: 2px 0 0 0; font-size: 14px; color: #0f172a; font-weight: 500; font-family: 'Inter', Arial, sans-serif;">${safe.businessAddress}</p>
                       </td>
                     </tr>
                   </table>
@@ -167,11 +194,11 @@ export function buildCallEmailHTML(data: CallEmailData): string {
                       <td style="padding: 20px;">
                         <p style="margin: 0 0 14px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #0891b2; font-family: 'Inter', Arial, sans-serif;">Decision Maker</p>
                         <p style="margin: 0; font-size: 12px; color: #64748b;">Name</p>
-                        <p style="margin: 2px 0 10px 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${data.dmName || 'N/A'}</p>
+                        <p style="margin: 2px 0 10px 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${safe.dmName}</p>
                         <p style="margin: 0; font-size: 12px; color: #64748b;">Phone</p>
-                        <p style="margin: 2px 0 10px 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${data.dmPhone || 'N/A'}</p>
+                        <p style="margin: 2px 0 10px 0; font-size: 15px; color: #0f172a; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">${safe.dmPhone}</p>
                         <p style="margin: 0; font-size: 12px; color: #64748b;">Email</p>
-                        <p style="margin: 2px 0 0 0; font-size: 14px; color: #0891b2; font-weight: 500; font-family: 'Inter', Arial, sans-serif;">${data.dmEmail || 'N/A'}</p>
+                        <p style="margin: 2px 0 0 0; font-size: 14px; color: #0891b2; font-weight: 500; font-family: 'Inter', Arial, sans-serif;">${safe.dmEmail}</p>
                       </td>
                     </tr>
                   </table>
@@ -187,7 +214,7 @@ export function buildCallEmailHTML(data: CallEmailData): string {
               <tr>
                 <td style="padding: 20px 24px;">
                   <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #d97706; font-family: 'Inter', Arial, sans-serif;">Comments</p>
-                  <p style="margin: 0; font-size: 15px; color: #451a03; line-height: 1.6; font-family: 'Inter', Arial, sans-serif;">${data.comments || 'No comments'}</p>
+                  <p style="margin: 0; font-size: 15px; color: #451a03; line-height: 1.6; font-family: 'Inter', Arial, sans-serif;">${safe.comments || 'No comments'}</p>
                 </td>
               </tr>
             </table>

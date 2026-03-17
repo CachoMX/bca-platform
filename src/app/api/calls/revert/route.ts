@@ -32,6 +32,15 @@ export async function POST(request: NextRequest) {
     }
 
     await prisma.$transaction(async (tx) => {
+      // Verify the call belongs to the specified business before deleting
+      const call = await tx.call.findUnique({ where: { idCall }, select: { idBusiness: true } });
+      if (!call) {
+        throw new Error('Call not found');
+      }
+      if (call.idBusiness !== idBusiness) {
+        throw new Error('Call does not belong to the specified business');
+      }
+
       // Delete the call record
       await tx.call.delete({ where: { idCall } });
 
@@ -44,6 +53,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message === 'Call not found' || message === 'Call does not belong to the specified business') {
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
     console.error('POST /api/calls/revert error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

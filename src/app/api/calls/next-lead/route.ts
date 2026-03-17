@@ -46,18 +46,30 @@ export async function POST(request: NextRequest) {
 
     const whereClause = Prisma.join(conditions, ' AND ');
 
-    // Atomic SELECT+UPDATE using CTE with UPDLOCK+READPAST and ORDER BY NEWID():
-    // - CTE selects a random row matching filters
+    // Atomic SELECT+UPDATE using CTE with UPDLOCK+READPAST:
+    // - Get approximate count of matching rows, pick a random offset
+    // - Use OFFSET/FETCH to jump directly to a random row (avoids full NEWID() sort)
     // - UPDLOCK: exclusively locks the selected row
     // - READPAST: other transactions skip already-locked rows
-    // - ORDER BY NEWID(): randomizes lead selection (matches legacy app behavior)
+    const countResult = await prisma.$queryRaw<{ cnt: number }[]>(
+      Prisma.sql`SELECT COUNT(*) as cnt FROM Businesses WHERE ${whereClause}`
+    );
+    const totalAvailable = Number(countResult[0]?.cnt ?? 0);
+
+    if (totalAvailable === 0) {
+      return NextResponse.json({ error: 'No leads available' }, { status: 404 });
+    }
+
+    const randomOffset = Math.floor(Math.random() * totalAvailable);
+
     const rows = await prisma.$queryRaw<LeadRow[]>(
       Prisma.sql`
         ;WITH cte AS (
-          SELECT TOP(1) *
+          SELECT *
           FROM Businesses WITH (UPDLOCK, READPAST)
           WHERE ${whereClause}
-          ORDER BY NEWID()
+          ORDER BY IdBusiness
+          OFFSET ${randomOffset} ROWS FETCH NEXT 1 ROWS ONLY
         )
         UPDATE cte
         SET IdStatus = 1
