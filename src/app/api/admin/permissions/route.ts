@@ -26,7 +26,7 @@ export async function GET() {
     const permissionMap = await getAllPermissions();
 
     return NextResponse.json({
-      roles: roles.map((r) => ({ id: r.idRole, name: r.role })),
+      roles: roles.map((r: { idRole: number; role: string | null }) => ({ id: r.idRole, name: r.role })),
       permissions: ALL_PERMISSION_KEYS.map((key) => ({
         key,
         label: PERMISSION_LABELS[key],

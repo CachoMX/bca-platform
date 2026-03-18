@@ -172,7 +172,7 @@ export async function GET(
     }
 
     // Filter out Saturday and Sunday
-    const filteredLogs = logs.filter((log) => {
+    const filteredLogs = logs.filter((log: { logDate: Date }) => {
       const day = new Date(log.logDate).getUTCDay();
       return day !== 0 && day !== 6;
     });
