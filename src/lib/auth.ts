@@ -41,13 +41,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!passwordValid) return null;
 
-        // Opportunistic re-hash: upgrade plaintext or weak-cost passwords to bcrypt 12
+        // Opportunistic re-hash: upgrade plaintext passwords to bcrypt 12
         if (!isHashed) {
-          const hashed = await bcrypt.hash(password, 12);
-          await prisma.user.update({
-            where: { idUser: user.idUser },
-            data: { password: hashed },
-          });
+          try {
+            const hashed = await bcrypt.hash(password, 12);
+            await prisma.user.update({
+              where: { idUser: user.idUser },
+              data: { password: hashed },
+            });
+          } catch {
+            // Non-fatal: login still succeeds even if re-hash fails
+          }
         }
 
         // Load permissions for this role from DB
