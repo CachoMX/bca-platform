@@ -40,7 +40,7 @@ jobs:
 
       - name: Prepare deploy package
         run: |
-          mkdir deploy
+          mkdir -p deploy/.next
           cp -r .next/standalone/* deploy/
           cp -r .next/static deploy/.next/static
           cp -r public deploy/public
