@@ -7,6 +7,16 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      AUTH_URL: ${{ secrets.AUTH_URL }}
+      AUTH_TRUST_HOST: "true"
+      SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+      SMS_API_URL: ${{ secrets.SMS_API_URL }}
+      SMS_USERNAME: ${{ secrets.SMS_USERNAME }}
+      SMS_PASSWORD: ${{ secrets.SMS_PASSWORD }}
+      NEXT_PUBLIC_APP_NAME: "PulseBC"
     steps:
       - uses: actions/checkout@v4
 
@@ -27,16 +37,6 @@ jobs:
 
       - name: Build Next.js
         run: pnpm build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
-          AUTH_URL: ${{ secrets.AUTH_URL }}
-          AUTH_TRUST_HOST: "true"
-          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
-          SMS_API_URL: ${{ secrets.SMS_API_URL }}
-          SMS_USERNAME: ${{ secrets.SMS_USERNAME }}
-          SMS_PASSWORD: ${{ secrets.SMS_PASSWORD }}
-          NEXT_PUBLIC_APP_NAME: "PulseBC"
 
       - name: Prepare deploy package
         run: |
@@ -45,22 +45,19 @@ jobs:
           cp -r .next/static deploy/.next/static
           cp -r public deploy/public
           cp web.config deploy/
-          cp .env.production deploy/.env 2>/dev/null || true
 
       - name: Create .env on deploy
         run: |
-          cat > deploy/.env <<ENVEOF
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          AUTH_SECRET=${{ secrets.AUTH_SECRET }}
-          AUTH_URL=${{ secrets.AUTH_URL }}
-          AUTH_TRUST_HOST=true
-          SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}
-          SMS_API_URL=${{ secrets.SMS_API_URL }}
-          SMS_USERNAME=${{ secrets.SMS_USERNAME }}
-          SMS_PASSWORD=${{ secrets.SMS_PASSWORD }}
-          NEXT_PUBLIC_APP_NAME=PulseBC
-          NODE_ENV=production
-          ENVEOF
+          echo "DATABASE_URL=${DATABASE_URL}" > deploy/.env
+          echo "AUTH_SECRET=${AUTH_SECRET}" >> deploy/.env
+          echo "AUTH_URL=${AUTH_URL}" >> deploy/.env
+          echo "AUTH_TRUST_HOST=true" >> deploy/.env
+          echo "SENDGRID_API_KEY=${SENDGRID_API_KEY}" >> deploy/.env
+          echo "SMS_API_URL=${SMS_API_URL}" >> deploy/.env
+          echo "SMS_USERNAME=${SMS_USERNAME}" >> deploy/.env
+          echo "SMS_PASSWORD=${SMS_PASSWORD}" >> deploy/.env
+          echo "NEXT_PUBLIC_APP_NAME=PulseBC" >> deploy/.env
+          echo "NODE_ENV=production" >> deploy/.env
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
