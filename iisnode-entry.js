@@ -1,6 +1,18 @@
-// iisnode passes the port via a named pipe in process.env.PORT
-// Next.js standalone server.js defaults to port 3000
-// This wrapper ensures the correct port is used
-process.env.PORT = process.env.PORT || '3000';
+// Log everything to stderr so iisnode shows it
+process.on('uncaughtException', (err) => {
+  process.stderr.write('UNCAUGHT: ' + err.stack + '\n');
+  process.exit(1);
+});
+process.on('unhandledRejection', (err) => {
+  process.stderr.write('UNHANDLED: ' + (err && err.stack || err) + '\n');
+});
+
+// iisnode passes a named pipe path in PORT — pass it through as-is
 process.env.HOSTNAME = '0.0.0.0';
-require('./server.js');
+
+try {
+  require('./server.js');
+} catch (err) {
+  process.stderr.write('REQUIRE ERROR: ' + err.stack + '\n');
+  process.exit(1);
+}
