@@ -37,6 +37,15 @@ export async function POST(request: NextRequest) {
     }
 
     const { data } = parsed.data;
+
+    const MAX_ROWS = 5000;
+    if (data.length > MAX_ROWS) {
+      return NextResponse.json(
+        { error: `Import limited to ${MAX_ROWS} rows at a time. You sent ${data.length}.` },
+        { status: 400 },
+      );
+    }
+
     let imported = 0;
     let skipped = 0;
     const errors: string[] = [];

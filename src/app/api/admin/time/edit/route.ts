@@ -87,6 +87,25 @@ export async function POST(request: Request) {
     // Build UTC-epoch Date where UTC hours = PST hours (for TIME column storage)
     const newDateTime = timeStringToUtcDate(value);
 
+    // Chronological validation: ensure time fields are in order
+    const TIME_ORDER = [
+      'clockIn', 'firstBreakOut', 'firstBreakIn',
+      'lunchOut', 'lunchIn',
+      'secondBreakOut', 'secondBreakIn', 'clockOut',
+    ];
+    const fieldIdx = TIME_ORDER.indexOf(field);
+    const proposed = { ...log, [field]: newDateTime } as unknown as Record<string, Date | null>;
+    for (let i = 0; i < TIME_ORDER.length - 1; i++) {
+      const a = proposed[TIME_ORDER[i]] as Date | null;
+      const b = proposed[TIME_ORDER[i + 1]] as Date | null;
+      if (a && b && a.getTime() > b.getTime()) {
+        return NextResponse.json(
+          { error: `${TIME_ORDER[i]} cannot be after ${TIME_ORDER[i + 1]}` },
+          { status: 400 },
+        );
+      }
+    }
+
     // Update the time log and create audit record in a transaction
     const [updatedLog] = await prisma.$transaction([
       prisma.employeeTimeLog.update({

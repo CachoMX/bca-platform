@@ -22,6 +22,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid photo format. Must be a base64 data URL.' }, { status: 400 });
     }
 
+    // Block SVG uploads (XSS vector — SVGs can contain embedded scripts)
+    if (photo.startsWith('data:image/svg')) {
+      return NextResponse.json({ error: 'SVG files are not allowed. Please upload a JPG or PNG.' }, { status: 400 });
+    }
+
     if (photo.length > 500000) {
       return NextResponse.json({ error: 'Photo is too large. Maximum size is roughly 350KB.' }, { status: 400 });
     }

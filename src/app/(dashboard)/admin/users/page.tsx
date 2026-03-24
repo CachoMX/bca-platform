@@ -200,43 +200,50 @@ export default function UsersPage() {
     });
   }
 
+  const [formError, setFormError] = useState<string | null>(null);
+
   async function handleSave() {
     if (!form.name.trim() || !form.email.trim()) return;
+    setFormError(null);
 
-    if (editingUser) {
-      await updateUser.mutateAsync({
-        userId: editingUser.userId,
-        name: form.name.trim(),
-        lastname: form.lastname.trim(),
-        email: form.email.trim(),
-        password: form.password || undefined,
-        role: form.role,
-        timezone: form.timezone,
-        city: form.city.trim(),
-        state: form.state.trim(),
-        country: form.country.trim(),
-        isPartTime: form.isPartTime,
-        sendEmail: form.sendEmail,
-      });
-    } else {
-      if (!form.password) return;
-      await createUser.mutateAsync({
-        name: form.name.trim(),
-        lastname: form.lastname.trim(),
-        email: form.email.trim(),
-        password: form.password,
-        role: form.role,
-        timezone: form.timezone,
-        city: form.city.trim(),
-        state: form.state.trim(),
-        country: form.country.trim(),
-        isPartTime: form.isPartTime,
-        sendEmail: form.sendEmail,
-      });
+    try {
+      if (editingUser) {
+        await updateUser.mutateAsync({
+          userId: editingUser.userId,
+          name: form.name.trim(),
+          lastname: form.lastname.trim(),
+          email: form.email.trim(),
+          password: form.password || undefined,
+          role: form.role,
+          timezone: form.timezone,
+          city: form.city.trim(),
+          state: form.state.trim(),
+          country: form.country.trim(),
+          isPartTime: form.isPartTime,
+          sendEmail: form.sendEmail,
+        });
+      } else {
+        if (!form.password) return;
+        await createUser.mutateAsync({
+          name: form.name.trim(),
+          lastname: form.lastname.trim(),
+          email: form.email.trim(),
+          password: form.password,
+          role: form.role,
+          timezone: form.timezone,
+          city: form.city.trim(),
+          state: form.state.trim(),
+          country: form.country.trim(),
+          isPartTime: form.isPartTime,
+          sendEmail: form.sendEmail,
+        });
+      }
+
+      setDialogOpen(false);
+      setEditingUser(null);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Failed to save user');
     }
-
-    setDialogOpen(false);
-    setEditingUser(null);
   }
 
   async function handleSaveSchedule() {
@@ -247,15 +254,26 @@ export default function UsersPage() {
     });
   }
 
+  const [deactivateError, setDeactivateError] = useState<string | null>(null);
+
   async function handleDeactivate() {
     if (!deactivatingUser) return;
-    await deleteUser.mutateAsync(deactivatingUser.userId);
-    setDeactivateDialogOpen(false);
-    setDeactivatingUser(null);
+    setDeactivateError(null);
+    try {
+      await deleteUser.mutateAsync(deactivatingUser.userId);
+      setDeactivateDialogOpen(false);
+      setDeactivatingUser(null);
+    } catch (err) {
+      setDeactivateError(err instanceof Error ? err.message : 'Failed to deactivate user');
+    }
   }
 
   async function handleActivate(user: User) {
-    await activateUser.mutateAsync(user.userId);
+    try {
+      await activateUser.mutateAsync(user.userId);
+    } catch {
+      // Errors surface via react-query's error state
+    }
   }
 
   const isSaving = createUser.isPending || updateUser.isPending;
@@ -649,10 +667,16 @@ export default function UsersPage() {
             )}
           </div>
 
+          {formError && (
+            <p className="text-sm font-medium" style={{ color: 'var(--danger)' }}>
+              {formError}
+            </p>
+          )}
+
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDialogOpen(false)}
+              onClick={() => { setDialogOpen(false); setFormError(null); }}
               disabled={isSaving}
             >
               Cancel
@@ -697,10 +721,16 @@ export default function UsersPage() {
             </span>
             ? They will no longer be able to access the platform.
           </p>
+          {deactivateError && (
+            <p className="text-sm font-medium" style={{ color: 'var(--danger)' }}>
+              {deactivateError}
+            </p>
+          )}
+
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeactivateDialogOpen(false)}
+              onClick={() => { setDeactivateDialogOpen(false); setDeactivateError(null); }}
               disabled={deleteUser.isPending}
             >
               Cancel
