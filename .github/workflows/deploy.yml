@@ -1,0 +1,73 @@
+name: Build & Deploy to Plesk
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+
+      - name: Build Next.js
+        run: pnpm build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          AUTH_URL: ${{ secrets.AUTH_URL }}
+          AUTH_TRUST_HOST: "true"
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          SMS_API_URL: ${{ secrets.SMS_API_URL }}
+          SMS_USERNAME: ${{ secrets.SMS_USERNAME }}
+          SMS_PASSWORD: ${{ secrets.SMS_PASSWORD }}
+          NEXT_PUBLIC_APP_NAME: "PulseBC"
+
+      - name: Prepare deploy package
+        run: |
+          mkdir deploy
+          cp -r .next/standalone/* deploy/
+          cp -r .next/static deploy/.next/static
+          cp -r public deploy/public
+          cp web.config deploy/
+          cp .env.production deploy/.env 2>/dev/null || true
+
+      - name: Create .env on deploy
+        run: |
+          cat > deploy/.env << 'ENVEOF'
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+          AUTH_URL=${{ secrets.AUTH_URL }}
+          AUTH_TRUST_HOST=true
+          SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}
+          SMS_API_URL=${{ secrets.SMS_API_URL }}
+          SMS_USERNAME=${{ secrets.SMS_USERNAME }}
+          SMS_PASSWORD=${{ secrets.SMS_PASSWORD }}
+          NEXT_PUBLIC_APP_NAME=PulseBC
+          NODE_ENV=production
+          ENVEOF
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./deploy/
+          server-dir: /httpdocs/
+          dangerous-clean-slate: false
