@@ -45,6 +45,7 @@ jobs:
           cp -r .next/static deploy/.next/static
           cp -r public deploy/public
           cp web.config deploy/
+          cp iisnode-entry.js deploy/
 
       - name: Create .env on deploy
         run: |
