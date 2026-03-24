@@ -12,7 +12,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -49,7 +49,7 @@ jobs:
 
       - name: Create .env on deploy
         run: |
-          cat > deploy/.env << 'ENVEOF'
+          cat > deploy/.env <<ENVEOF
           DATABASE_URL=${{ secrets.DATABASE_URL }}
           AUTH_SECRET=${{ secrets.AUTH_SECRET }}
           AUTH_URL=${{ secrets.AUTH_URL }}
