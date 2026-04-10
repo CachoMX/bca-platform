@@ -70,6 +70,8 @@ export async function GET(request: NextRequest) {
       role: user.idRole ?? 3,
       isActive: user.status !== true,
       isPartTime: user.isPartTime === true,
+      smsAccess: user.smsAccess === true,
+      sendEmail: user.sendEmail === 1,
       timezone: user.timeZone ?? '',
       city: user.city ?? '',
       state: user.state ?? '',

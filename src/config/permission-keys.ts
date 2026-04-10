@@ -10,12 +10,14 @@ export const PERMISSION_LABELS: Record<string, string> = {
   sms: 'SMS',
   resources: 'Resources',
   reports: 'Reports',
+  maintenance: 'IT Maintenance',
   admin_users: 'User Management',
   admin_time: 'Time Management',
   admin_quotes: 'Quotes Management',
   admin_rebuttals: 'Rebuttals',
   admin_import: 'Import Leads',
   admin_permissions: 'Permissions',
+  admin_maintenance: 'Maintenance Admin',
 };
 
 export const ALL_PERMISSION_KEYS = Object.keys(PERMISSION_LABELS);
@@ -36,6 +38,8 @@ export function getPermissionKeyForRoute(pathname: string): string | null {
   if (pathname.startsWith('/admin/rebuttals')) return 'admin_rebuttals';
   if (pathname.startsWith('/admin/import')) return 'admin_import';
   if (pathname.startsWith('/admin/permissions')) return 'admin_permissions';
+  if (pathname.startsWith('/maintenance')) return 'maintenance';
+  if (pathname.startsWith('/admin/maintenance')) return 'admin_maintenance';
   return null;
 }
 
@@ -49,5 +53,7 @@ export function getPermissionKeyForApiRoute(pathname: string): string | null {
   if (pathname.startsWith('/api/reports')) return 'reports';
   // SMS API routes (excluding public webhook which is in publicRoutes)
   if (pathname.startsWith('/api/sms') && !pathname.startsWith('/api/sms/webhook')) return 'sms';
+  if (pathname.startsWith('/api/admin/maintenance')) return 'admin_maintenance';
+  if (pathname.startsWith('/api/maintenance')) return 'maintenance';
   return null;
 }

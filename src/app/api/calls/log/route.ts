@@ -81,8 +81,8 @@ export async function POST(request: NextRequest) {
       return newCall;
     });
 
-    // Send email notification for Potential Client (4) and Info Request (10)
-    if (data.idDisposition === 4 || data.idDisposition === 10) {
+    // Send email notification for Potential Client (4), Call Back (8), and Info Request (10)
+    if (data.idDisposition === 4 || data.idDisposition === 8 || data.idDisposition === 10) {
       // Fire-and-forget: don't block the response
       sendCallNotificationEmail(data, userId).catch((err) =>
         console.error('Email notification error:', err)
@@ -133,11 +133,8 @@ async function sendCallNotificationEmail(
     });
   }
 
-  // Get CC recipients (users with sendEmail = 1)
-  const ccUsers = await prisma.user.findMany({
-    where: { sendEmail: 1 },
-    select: { name: true, lastname: true, email: true },
-  });
+  // CC is always admin@benjaminchaise.com only
+  const ccUsers = [{ name: 'Admin', lastname: '', email: 'admin@benjaminchaise.com' }];
 
   const closerName = closerUser
     ? `${closerUser.name} ${closerUser.lastname}`.trim()
@@ -146,11 +143,15 @@ async function sendCallNotificationEmail(
     ? `${caller.name} ${caller.lastname}`.trim()
     : 'Unknown';
 
-  const isPC = data.idDisposition === 4;
-  const typeLabel = isPC ? 'Potential Client' : 'Info Request';
+  const typeLabel = data.idDisposition === 4 ? 'Potential Client'
+    : data.idDisposition === 8 ? 'Call Back Request'
+    : 'Info Request';
+  const emailType = data.idDisposition === 4 ? 'potential-client'
+    : data.idDisposition === 8 ? 'callback'
+    : 'info-request';
 
   const html = buildCallEmailHTML({
-    type: isPC ? 'potential-client' : 'info-request',
+    type: emailType as 'potential-client' | 'callback' | 'info-request',
     closerName,
     fromName: callerName,
     businessName: business?.businessName || 'Unknown',

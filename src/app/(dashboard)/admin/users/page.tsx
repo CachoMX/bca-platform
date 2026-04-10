@@ -84,6 +84,7 @@ interface UserFormState {
   state: string;
   country: string;
   isPartTime: boolean;
+  smsAccess: boolean;
   sendEmail: boolean;
 }
 
@@ -98,7 +99,8 @@ const INITIAL_FORM: UserFormState = {
   state: '',
   country: 'US',
   isPartTime: false,
-  sendEmail: true,
+  smsAccess: false,
+  sendEmail: false,
 };
 
 export default function UsersPage() {
@@ -143,7 +145,10 @@ export default function UsersPage() {
     }
   }, [userSchedule, editingUser]);
 
-  if (userRole !== 1) {
+  const isAdmin = userRole === 1;
+  const isCloser = userRole === 2;
+
+  if (!isAdmin && !isCloser) {
     return (
       <>
         <Header title="User Management" />
@@ -177,7 +182,8 @@ export default function UsersPage() {
       state: user.state,
       country: user.country,
       isPartTime: user.isPartTime,
-      sendEmail: false,
+      smsAccess: user.smsAccess,
+      sendEmail: user.sendEmail,
     });
     setShowSchedule(false);
     setDialogOpen(true);
@@ -220,6 +226,7 @@ export default function UsersPage() {
           state: form.state.trim(),
           country: form.country.trim(),
           isPartTime: form.isPartTime,
+          smsAccess: form.smsAccess,
           sendEmail: form.sendEmail,
         });
       } else {
@@ -309,10 +316,12 @@ export default function UsersPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={openAddDialog}>
-            <Plus className="h-4 w-4" />
-            Add User
-          </Button>
+          {isAdmin && (
+            <Button onClick={openAddDialog}>
+              <Plus className="h-4 w-4" />
+              Add User
+            </Button>
+          )}
         </div>
 
         {/* Loading */}
@@ -402,33 +411,41 @@ export default function UsersPage() {
 
                   {/* Actions */}
                   <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => openEditDialog(user)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    {user.isActive ? (
+                    {/* Edit: admin only */}
+                    {isAdmin && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-[var(--danger)] hover:text-[var(--danger)]"
-                        onClick={() => openDeactivateDialog(user)}
+                        className="h-8 w-8"
+                        onClick={() => openEditDialog(user)}
                       >
-                        <UserX className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-[var(--success)] hover:text-[var(--success)]"
-                        onClick={() => handleActivate(user)}
-                        disabled={activateUser.isPending}
-                      >
-                        <UserCheck className="h-4 w-4" />
-                      </Button>
+                    )}
+                    {/* Activate/Deactivate: admin for all, closer for remote agents only */}
+                    {(isAdmin || (isCloser && (user.role === 3 || user.role === 4))) && (
+                      <>
+                        {user.isActive ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-[var(--danger)] hover:text-[var(--danger)]"
+                            onClick={() => openDeactivateDialog(user)}
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-[var(--success)] hover:text-[var(--success)]"
+                            onClick={() => handleActivate(user)}
+                            disabled={activateUser.isPending}
+                          >
+                            <UserCheck className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </CardContent>
@@ -582,15 +599,15 @@ export default function UsersPage() {
             <div className="flex items-center justify-between rounded-lg border border-[var(--border)] p-4">
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                  Send Email
+                  SMS Access
                 </p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  Send a welcome email with login credentials
+                  Allow this user to access SMS regardless of their role
                 </p>
               </div>
               <Switch
-                checked={form.sendEmail}
-                onCheckedChange={(checked) => updateForm('sendEmail', checked)}
+                checked={form.smsAccess}
+                onCheckedChange={(checked) => updateForm('smsAccess', checked)}
               />
             </div>
 

@@ -13,10 +13,29 @@ export async function GET(
     }
 
     const { phone } = await params;
-    const phoneNumber = decodeURIComponent(phone);
+    const digits = decodeURIComponent(phone).replace(/\D/g, '');
 
+    // Match stored numbers regardless of +1 prefix format
     const messages = await prisma.message.findMany({
-      where: { phoneNumber },
+      where: {
+        OR: [
+          { phoneNumber: digits },
+          { phoneNumber: `+${digits}` },
+          { phoneNumber: `+1${digits}` },
+          { phoneNumber: digits.startsWith('1') ? digits.slice(1) : `1${digits}` },
+        ],
+      },
+      select: {
+        id: true,
+        phoneNumber: true,
+        messageBody: true,
+        direction: true,
+        sentTime: true,
+        status: true,
+        mediaType: true,
+        mediaName: true,
+        // Exclude mediaData (base64) from list — fetched on demand per message
+      },
       orderBy: { sentTime: 'asc' },
     });
 
@@ -26,6 +45,9 @@ export async function GET(
       body: m.messageBody,
       direction: m.direction,
       createdAt: m.sentTime.toISOString(),
+      status: m.status ?? null,
+      mediaType: m.mediaType ?? null,
+      mediaName: m.mediaName ?? null,
     }));
 
     return NextResponse.json(result);

@@ -219,6 +219,7 @@ function getCurrentWeekDate(): string {
 /** Determine which break can be skipped based on nextAction */
 function getSkippableBreak(nextAction: ClockAction | null): string | null {
   if (nextAction === 'firstBreakOut') return 'firstBreak';
+  if (nextAction === 'lunchOut') return 'lunch';
   if (nextAction === 'secondBreakOut') return 'secondBreak';
   return null;
 }
@@ -744,7 +745,8 @@ export default function ClockPage() {
     if (!skippableBreak) return;
     try {
       await skipBreak.mutateAsync({ breakType: skippableBreak });
-      addToast('info', `${skippableBreak === 'firstBreak' ? '1st' : '2nd'} break skipped`);
+      const label = skippableBreak === 'firstBreak' ? '1st break' : skippableBreak === 'lunch' ? 'Lunch' : '2nd break';
+      addToast('info', `${label} skipped`);
     } catch (err: any) {
       addToast('error', err?.message || 'Could not skip break');
     }
@@ -922,8 +924,8 @@ export default function ClockPage() {
                           )}
                         </Button>
 
-                        {/* Skip Break button (part-time only) */}
-                        {isPartTime && skippableBreak && (
+                        {/* Skip button: lunch for all users, breaks for part-time only */}
+                        {skippableBreak && (skippableBreak === 'lunch' || isPartTime) && (
                           <Button
                             variant="ghost"
                             size="lg"
@@ -932,7 +934,7 @@ export default function ClockPage() {
                             disabled={isActionLoading}
                           >
                             <SkipForward className="h-4 w-4" />
-                            Skip Break
+                            {skippableBreak === 'lunch' ? 'Skip Lunch' : 'Skip Break'}
                           </Button>
                         )}
                       </div>

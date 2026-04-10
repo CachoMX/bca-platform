@@ -15,6 +15,10 @@ import {
   ChevronLeft,
   ChevronsLeft,
   ChevronsRight,
+  Mail,
+  CheckCircle,
+  X,
+  AlertCircle,
 } from 'lucide-react';
 import {
   ColumnDef,
@@ -42,12 +46,15 @@ import {
   useReports,
   useReportsSummary,
   useExportCSV,
+  useResendEmail,
   type ReportFilters,
   type ReportRow,
 } from '@/hooks/use-reports';
 import { useUsers } from '@/hooks/use-users';
-import { useDispositions } from '@/hooks/use-calls';
+import { useDispositions, useClosers } from '@/hooks/use-calls';
 import { formatDate } from '@/lib/utils';
+
+const EMAIL_DISPOSITIONS = [4, 8, 10]; // Potential Client, Call Back, Info Request
 
 const columns: ColumnDef<ReportRow, unknown>[] = [
   {
@@ -97,6 +104,12 @@ const columns: ColumnDef<ReportRow, unknown>[] = [
       return val.length > 60 ? `${val.slice(0, 60)}...` : val;
     },
   },
+  {
+    id: 'actions',
+    header: '',
+    cell: () => null, // rendered manually in the custom table
+    size: 48,
+  },
 ];
 
 function DetailItem({ label, value }: { label: string; value: string | null | undefined }) {
@@ -108,30 +121,95 @@ function DetailItem({ label, value }: { label: string; value: string | null | un
   );
 }
 
-function ExpandedRow({ row }: { row: ReportRow }) {
+function ExpandedRow({
+  row,
+  onResendEmail,
+  isSending,
+}: {
+  row: ReportRow;
+  onResendEmail: (idCall: number) => void;
+  isSending: boolean;
+}) {
   const debtDisplay = row.debtAmount
     ? `$${parseFloat(row.debtAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : null;
+  const canSendEmail = EMAIL_DISPOSITIONS.includes(row.idDisposition);
 
   return (
-    <div className="grid grid-cols-2 gap-x-8 gap-y-3 px-4 py-4 sm:grid-cols-3 lg:grid-cols-4">
-      <DetailItem label="Call ID" value={String(row.idCall)} />
-      <DetailItem label="Date" value={formatDate(row.callDate)} />
-      <DetailItem label="Rep" value={row.repName} />
-      <DetailItem label="Disposition" value={row.disposition} />
-      <DetailItem label="Business Name" value={row.businessName} />
-      <DetailItem label="Business Phone" value={row.businessPhone} />
-      <DetailItem label="Business Address" value={row.businessAddress} />
-      <DetailItem label="Decision Maker" value={row.dmakerName} />
-      <DetailItem label="DM Phone" value={row.dmakerPhone} />
-      <DetailItem label="DM Email" value={row.dmakerEmail} />
-      <DetailItem label="Debtor Name" value={row.debtorName} />
-      <DetailItem label="Debt Amount" value={debtDisplay} />
-      <DetailItem label="Agreement Sent" value={row.agreementSent} />
-      <DetailItem label="Callback" value={row.callBack ? formatDate(row.callBack) : null} />
-      <DetailItem label="Closer" value={row.closerName} />
-      <div className="col-span-full">
-        <DetailItem label="Comments" value={row.comments} />
+    <div className="px-4 py-4">
+      <div className="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+        <DetailItem label="Call ID" value={String(row.idCall)} />
+        <DetailItem label="Date" value={formatDate(row.callDate)} />
+        <DetailItem label="Rep" value={row.repName} />
+        <DetailItem label="Disposition" value={row.disposition} />
+        <DetailItem label="Business Name" value={row.businessName} />
+        <DetailItem label="Business Phone" value={row.businessPhone} />
+        <DetailItem label="Business Address" value={row.businessAddress} />
+        <DetailItem label="Decision Maker" value={row.dmakerName} />
+        <DetailItem label="DM Phone" value={row.dmakerPhone} />
+        <DetailItem label="DM Email" value={row.dmakerEmail} />
+        <DetailItem label="Debtor Name" value={row.debtorName} />
+        <DetailItem label="Debt Amount" value={debtDisplay} />
+        <DetailItem label="Agreement Sent" value={row.agreementSent} />
+        <DetailItem label="Callback" value={row.callBack ? formatDate(row.callBack) : null} />
+        <DetailItem label="Closer" value={row.closerName} />
+        <div className="col-span-full">
+          <DetailItem label="Comments" value={row.comments} />
+        </div>
+      </div>
+      {canSendEmail && (
+        <div className="mt-4 flex justify-end border-t border-[var(--border)] pt-4">
+          <Button
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onResendEmail(row.idCall);
+            }}
+            disabled={isSending}
+          >
+            {isSending ? (
+              <Loading size="sm" />
+            ) : (
+              <Mail className="h-4 w-4" />
+            )}
+            {isSending ? 'Sending...' : 'Send Email'}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Toast({
+  message,
+  type,
+  onClose,
+}: {
+  message: string;
+  type: 'success' | 'error';
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
+      <div
+        className="flex items-center gap-3 rounded-xl border px-5 py-4 shadow-lg"
+        style={{
+          backgroundColor: 'var(--bg-card)',
+          borderColor: type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)',
+        }}
+      >
+        {type === 'success' ? (
+          <CheckCircle className="h-5 w-5 shrink-0 text-green-500" />
+        ) : (
+          <AlertCircle className="h-5 w-5 shrink-0 text-red-500" />
+        )}
+        <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{message}</p>
+        <button
+          onClick={onClose}
+          className="ml-2 shrink-0 rounded-md p-1 transition-colors hover:bg-[var(--bg-elevated)]"
+        >
+          <X className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+        </button>
       </div>
     </div>
   );
@@ -146,11 +224,13 @@ export default function ReportsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [disposition, setDisposition] = useState('');
+  const [closerId, setCloserId] = useState('');
   const [appliedFilters, setAppliedFilters] = useState<ReportFilters>({});
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
   const { data: users } = useUsers();
   const { data: dispositions } = useDispositions();
+  const { data: closers } = useClosers();
   const { data: reportsData, isLoading: reportsLoading } =
     useReports(appliedFilters);
   const { data: summary, isLoading: summaryLoading } =
@@ -163,6 +243,7 @@ export default function ReportsPage() {
       startDate: startDate || undefined,
       endDate: endDate || undefined,
       disposition: disposition && disposition !== 'all' ? disposition : undefined,
+      closerId: closerId && closerId !== 'all' ? closerId : undefined,
     });
   }
 
@@ -278,6 +359,23 @@ export default function ReportsPage() {
                         value={String(d.idDisposition)}
                       >
                         {d.disposition}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="min-w-[160px] space-y-1.5">
+                <Label>Closer</Label>
+                <Select value={closerId} onValueChange={setCloserId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Closers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Closers</SelectItem>
+                    {closers?.map((c) => (
+                      <SelectItem key={c.userId} value={String(c.userId)}>
+                        {c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -401,6 +499,25 @@ function ReportsTable({
   setExpandedRows: React.Dispatch<React.SetStateAction<Set<number>>>;
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [sendingCallId, setSendingCallId] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const resendEmail = useResendEmail();
+
+  function handleResendEmail(idCall: number) {
+    setSendingCallId(idCall);
+    resendEmail.mutate(idCall, {
+      onSuccess: (data) => {
+        setToast({ message: `Email sent successfully to ${data.sentTo}`, type: 'success' });
+        setSendingCallId(null);
+        setTimeout(() => setToast(null), 5000);
+      },
+      onError: (err) => {
+        setToast({ message: err.message || 'Failed to send email', type: 'error' });
+        setSendingCallId(null);
+        setTimeout(() => setToast(null), 5000);
+      },
+    });
+  }
 
   const table = useReactTable({
     data: rows,
@@ -465,6 +582,25 @@ function ReportsTable({
                             ) : (
                               <ChevronRight className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
                             )
+                          ) : cell.column.id === 'actions' ? (
+                            EMAIL_DISPOSITIONS.includes(original.idDisposition) ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleResendEmail(original.idCall);
+                                }}
+                                disabled={sendingCallId === original.idCall}
+                                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors bg-[var(--accent)] text-[var(--accent-contrast)] hover:bg-[var(--accent-hover)] disabled:opacity-50"
+                                title="Send email to closer"
+                              >
+                                {sendingCallId === original.idCall ? (
+                                  <Loading size="sm" />
+                                ) : (
+                                  <Mail className="h-3.5 w-3.5" />
+                                )}
+                                Send Email
+                              </button>
+                            ) : null
                           ) : (
                             flexRender(cell.column.columnDef.cell, cell.getContext())
                           )}
@@ -474,7 +610,11 @@ function ReportsTable({
                     {isExpanded && (
                       <tr className="border-b border-[var(--border)]">
                         <td colSpan={columns.length} className="bg-[var(--bg-secondary)]">
-                          <ExpandedRow row={original} />
+                          <ExpandedRow
+                            row={original}
+                            onResendEmail={handleResendEmail}
+                            isSending={sendingCallId === original.idCall}
+                          />
                         </td>
                       </tr>
                     )}
@@ -512,6 +652,10 @@ function ReportsTable({
           </Button>
         </div>
       </div>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
     </div>
   );
 }

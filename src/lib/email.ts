@@ -51,7 +51,7 @@ export async function sendEmail({ to, cc, subject, html }: SendEmailParams): Pro
 }
 
 interface CallEmailData {
-  type: 'potential-client' | 'info-request';
+  type: 'potential-client' | 'info-request' | 'callback';
   closerName: string;
   fromName: string;
   businessName: string;
@@ -86,8 +86,9 @@ export function buildCallEmailHTML(data: CallEmailData): string {
   };
 
   const isPC = data.type === 'potential-client';
-  const typeBadge = isPC ? 'POTENTIAL CLIENT' : 'INFO REQUEST';
-  const greeting = isPC ? 'You Got a Potential Client!' : 'You Got an Info Request!';
+  const isCB = data.type === 'callback';
+  const typeBadge = isPC ? 'POTENTIAL CLIENT' : isCB ? 'CALL BACK REQUEST' : 'INFO REQUEST';
+  const greeting = isPC ? 'You Got a Potential Client!' : isCB ? 'You Got a Call Back Request!' : 'You Got an Info Request!';
 
   let debtorSection = '';
   if (isPC) {

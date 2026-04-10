@@ -65,9 +65,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { phoneNumber, messageBody } = parsed.data;
+    const { phoneNumber: rawPhone, messageBody } = parsed.data;
+    // Optional MMS fields (not in schema validator — read directly from body)
+    const mediaData: string | null = body.mediaData ?? null;
+    const mediaType: string | null = body.mediaType ?? null;
+    const mediaName: string | null = body.mediaName ?? null;
 
-    // Send SMS via Android SMS Gateway (sms-gate.app)
+    // Normalize to E.164 (+1XXXXXXXXXX for US/MX 10-digit, or keep as-is if already has +)
+    const digits = rawPhone.replace(/\D/g, '');
+    const phoneNumber = rawPhone.startsWith('+')
+      ? rawPhone
+      : digits.length === 10
+        ? `+1${digits}`
+        : `+${digits}`;
+
+    // Send SMS/MMS via Android SMS Gateway (sms-gate.app)
     const smsApiUrl = process.env.SMS_API_URL;
     const smsUsername = process.env.SMS_USERNAME;
     const smsPassword = process.env.SMS_PASSWORD;
@@ -78,16 +90,25 @@ export async function POST(request: NextRequest) {
 
     const credentials = Buffer.from(`${smsUsername}:${smsPassword}`).toString('base64');
 
+    // Build gateway payload — use imageMessage for MMS, textMessage for SMS
+    const gatewayPayload = mediaData && mediaType
+      ? {
+          message: messageBody,
+          phoneNumbers: [phoneNumber],
+          imageMessage: { base64Data: mediaData, mimeType: mediaType },
+        }
+      : {
+          textMessage: { text: messageBody },
+          phoneNumbers: [phoneNumber],
+        };
+
     const gatewayResponse = await fetch(`${smsApiUrl}/messages`, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${credentials}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        textMessage: { text: messageBody },
-        phoneNumbers: [phoneNumber],
-      }),
+      body: JSON.stringify(gatewayPayload),
     });
 
     if (!gatewayResponse.ok) {
@@ -96,6 +117,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to send SMS' }, { status: 502 });
     }
 
+    // Capture gateway message ID for delivery status tracking
+    const gatewayData = await gatewayResponse.json().catch(() => null);
+    const gatewayId: string | null = gatewayData?.id ?? null;
+
     // Save message to database
     const message = await prisma.message.create({
       data: {
@@ -103,6 +128,9 @@ export async function POST(request: NextRequest) {
         messageBody,
         direction: 'outbound',
         sentTime: new Date(),
+        status: 'sent',
+        gatewayId,
+        ...(mediaData ? { mediaData, mediaType, mediaName } : {}),
       },
     });
 

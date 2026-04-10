@@ -14,6 +14,7 @@ export interface User {
   role: number;
   isActive: boolean;
   isPartTime: boolean;
+  smsAccess: boolean;
   timezone: string;
   city: string;
   state: string;
@@ -46,6 +47,7 @@ export interface UpdateUserPayload {
   state: string;
   country: string;
   isPartTime: boolean;
+  smsAccess: boolean;
   sendEmail: boolean;
 }
 
@@ -168,7 +170,7 @@ export function useActivateUser() {
       fetchJson(`/api/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: true }),
+        body: JSON.stringify({ isActive: true, roleId: 3 }),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] });

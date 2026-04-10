@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { rep, startDate, endDate, disposition, page, pageSize } = parsed.data;
+    const closerId = searchParams.get('closerId') || undefined;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: Record<string, any> = {};
@@ -45,6 +46,10 @@ export async function GET(request: NextRequest) {
 
     if (disposition) {
       where.idDisposition = Number(disposition);
+    }
+
+    if (closerId) {
+      where.idCloser = Number(closerId);
     }
 
     if (startDate || endDate) {
@@ -60,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     if (wantsCsv) {
       // Require at least one filter for CSV export to prevent full table dumps
-      if (!rep && !startDate && !endDate && !disposition) {
+      if (!rep && !startDate && !endDate && !disposition && !closerId) {
         return NextResponse.json(
           { error: 'Please apply at least one filter before exporting CSV' },
           { status: 400 },
@@ -146,6 +151,8 @@ export async function GET(request: NextRequest) {
       agreementSent: c.agreementSent ?? null,
       callBack: c.callBack?.toISOString() ?? null,
       closerName: c.closer ? `${c.closer.name ?? ''} ${c.closer.lastname ?? ''}`.trim() : null,
+      idDisposition: c.idDisposition,
+      idCloser: c.idCloser ?? null,
     }));
 
     return NextResponse.json({

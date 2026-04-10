@@ -23,6 +23,7 @@ model User {
   sendEmail   Int?     @default(0) @map("SendEmail")
   status      Boolean? @default(true) @map("Status")
   isPartTime  Boolean? @default(false) @map("IsPartTime")
+  smsAccess   Boolean? @default(false) @map("SmsAccess")
   photo       String?  @map("Photo") @db.NVarChar(Max)
   resetToken  String?  @map("ResetToken") @db.NVarChar(200)
   resetExpires DateTime? @map("ResetExpires")
@@ -36,6 +37,12 @@ model User {
   disconnections       EmployeeDisconnection[] @relation("DisconnectedUser")
   videoViews           VideoView[]
   activityLogs         UserActivityLog[]
+
+  assignedComputers    Computer[]            @relation("ComputerUser")
+  computerAssignments  ComputerAssignment[]  @relation("ComputerAssignments")
+  maintenancesPerformed MaintenanceLog[]     @relation("MaintenanceTechnician")
+  ticketsReported      MaintenanceTicket[]   @relation("TicketReporter")
+  ticketsAssigned      MaintenanceTicket[]   @relation("TicketAssignee")
 
   @@map("Users")
   @@schema("dbo")
@@ -260,8 +267,125 @@ model Message {
   direction   String   @map("Direction")
   sentTime    DateTime @map("SentTime")
   isRead      Boolean? @default(false) @map("IsRead")
+  status      String?  @map("Status")      // pending | sent | delivered | failed (outbound only)
+  gatewayId   String?  @map("GatewayId")   // message ID from sms-gate.app
+  mediaData   String?  @map("MediaData") @db.NVarChar(Max)  // base64 encoded (MMS)
+  mediaType   String?  @map("MediaType")   // image/jpeg, image/png, application/pdf
+  mediaName   String?  @map("MediaName")   // original filename
 
   @@index([phoneNumber, sentTime], map: "IX_Messages_Phone_SentTime")
+  @@index([gatewayId], map: "IX_Messages_GatewayId")
   @@map("Messages")
+  @@schema("benjaise_sqluser2")
+}
+
+model Contact {
+  id          Int      @id @default(autoincrement()) @map("Id")
+  phoneNumber String   @unique @map("PhoneNumber")
+  name        String   @map("Name")
+  updatedAt   DateTime @updatedAt @map("UpdatedAt")
+
+  @@map("SmsContacts")
+  @@schema("benjaise_sqluser2")
+}
+
+model SmsTemplate {
+  id        Int    @id @default(autoincrement()) @map("Id")
+  title     String @map("Title")
+  body      String @map("Body") @db.NVarChar(Max)
+  sortOrder Int    @default(0) @map("SortOrder")
+
+  @@map("SmsTemplates")
+  @@schema("benjaise_sqluser2")
+}
+
+// ─── IT Maintenance ────────────────────────────────────────────────────────────
+
+model ComputerAssignment {
+  id         Int      @id @default(autoincrement()) @map("Id")
+  computerId Int      @map("ComputerId")
+  userId     Int      @map("UserId")
+  assignedAt DateTime @default(now()) @map("AssignedAt")
+
+  computer   Computer @relation(fields: [computerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user       User     @relation("ComputerAssignments", fields: [userId], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([computerId, userId], map: "UQ_ComputerAssignments_Computer_User")
+  @@index([userId], map: "IX_ComputerAssignments_User")
+  @@map("ComputerAssignments")
+  @@schema("benjaise_sqluser2")
+}
+
+model Computer {
+  id                        Int      @id @default(autoincrement()) @map("Id")
+  computerName              String   @map("ComputerName")
+  remotePcId                String?  @map("RemotePcId")
+  assignedUserId            Int?     @map("AssignedUserId")
+  operatingSystem           String?  @map("OperatingSystem")
+  specs                     String?  @map("Specs") @db.NVarChar(Max)
+  notes                     String?  @map("Notes") @db.NVarChar(Max)
+  status                    String   @default("active") @map("Status")
+  maintenanceIntervalMonths Int      @default(3) @map("MaintenanceIntervalMonths")
+  createdAt                 DateTime @default(now()) @map("CreatedAt")
+  updatedAt                 DateTime @updatedAt @map("UpdatedAt")
+
+  assignedUser       User?                @relation("ComputerUser", fields: [assignedUserId], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
+  assignments        ComputerAssignment[]
+  maintenanceLogs    MaintenanceLog[]
+  maintenanceTickets MaintenanceTicket[]
+
+  @@index([status], map: "IX_Computers_Status")
+  @@index([assignedUserId], map: "IX_Computers_AssignedUser")
+  @@map("Computers")
+  @@schema("benjaise_sqluser2")
+}
+
+model MaintenanceLog {
+  id               Int      @id @default(autoincrement()) @map("Id")
+  computerId       Int      @map("ComputerId")
+  maintenanceType  String   @map("MaintenanceType")
+  performedDate    DateTime @map("PerformedDate")
+  technicianId     Int      @map("TechnicianId")
+  durationMinutes  Int?     @map("DurationMinutes")
+  toolsUsed        String?  @map("ToolsUsed") @db.NVarChar(Max)
+  issuesFound      String?  @map("IssuesFound") @db.NVarChar(Max)
+  actionsTaken     String?  @map("ActionsTaken") @db.NVarChar(Max)
+  notes            String?  @map("Notes") @db.NVarChar(Max)
+  relatedTicketId  Int?     @map("RelatedTicketId")
+  createdAt        DateTime @default(now()) @map("CreatedAt")
+
+  computer       Computer           @relation(fields: [computerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  technician     User               @relation("MaintenanceTechnician", fields: [technicianId], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
+  relatedTicket  MaintenanceTicket? @relation(fields: [relatedTicketId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([computerId, performedDate], map: "IX_MaintenanceLogs_Computer_Date")
+  @@index([maintenanceType], map: "IX_MaintenanceLogs_Type")
+  @@map("MaintenanceLogs")
+  @@schema("benjaise_sqluser2")
+}
+
+model MaintenanceTicket {
+  id                 Int       @id @default(autoincrement()) @map("Id")
+  computerId         Int       @map("ComputerId")
+  reportedByUserId   Int       @map("ReportedByUserId")
+  subject            String    @map("Subject")
+  description        String    @map("Description") @db.NVarChar(Max)
+  priority           String    @default("normal") @map("Priority")
+  status             String    @default("open") @map("Status")
+  resolvedDate       DateTime? @map("ResolvedDate")
+  resolutionNotes    String?   @map("ResolutionNotes") @db.NVarChar(Max)
+  assignedToUserId   Int?      @map("AssignedToUserId")
+  createdAt          DateTime  @default(now()) @map("CreatedAt")
+  updatedAt          DateTime  @updatedAt @map("UpdatedAt")
+
+  computer        Computer         @relation(fields: [computerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reportedBy      User             @relation("TicketReporter", fields: [reportedByUserId], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
+  assignedTo      User?            @relation("TicketAssignee", fields: [assignedToUserId], references: [idUser], onDelete: NoAction, onUpdate: NoAction)
+  maintenanceLogs MaintenanceLog[]
+
+  @@index([computerId], map: "IX_MaintenanceTickets_Computer")
+  @@index([status], map: "IX_MaintenanceTickets_Status")
+  @@index([reportedByUserId], map: "IX_MaintenanceTickets_ReportedBy")
+  @@map("MaintenanceTickets")
   @@schema("benjaise_sqluser2")
 }

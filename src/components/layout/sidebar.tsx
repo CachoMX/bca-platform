@@ -139,6 +139,19 @@ export default function Sidebar() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: unreadSmsData } = useQuery<number>({
+    queryKey: ['sms-unread-count'],
+    queryFn: async () => {
+      const res = await fetch('/api/sms');
+      if (!res.ok) return 0;
+      const convs = await res.json();
+      return Array.isArray(convs) ? convs.reduce((sum: number, c: { unread: number }) => sum + (c.unread ?? 0), 0) : 0;
+    },
+    refetchInterval: 15_000,
+    enabled: !!session?.user,
+  });
+  const unreadSmsCount = unreadSmsData ?? 0;
+
   const { data: pendingData } = useQuery<{ count: number }>({
     queryKey: ['pending-accounts'],
     queryFn: async () => {
@@ -198,7 +211,17 @@ export default function Sidebar() {
                 onNavigate={closeMobile}
               />
             ) : (
-              <NavLink key={item.href} item={item} pathname={pathname} onClick={closeMobile} />
+              <div key={item.href} className="relative">
+                <NavLink item={item} pathname={pathname} onClick={closeMobile} />
+                {item.href === '/sms' && unreadSmsCount > 0 && (
+                  <span
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white"
+                    style={{ backgroundColor: '#ef4444' }}
+                  >
+                    {unreadSmsCount > 99 ? '99+' : unreadSmsCount}
+                  </span>
+                )}
+              </div>
             ),
           )}
         </div>
@@ -219,19 +242,29 @@ export default function Sidebar() {
               />
             </div>
             <div className="flex flex-col gap-0.5">
-              {filteredAdmin.map((item) => (
-                <div key={item.href} className="relative">
-                  <NavLink item={item} pathname={pathname} onClick={closeMobile} />
-                  {item.href === '/admin/users' && pendingCount > 0 && (
-                    <span
-                      className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white"
-                      style={{ backgroundColor: '#ef4444' }}
-                    >
-                      {pendingCount}
-                    </span>
-                  )}
-                </div>
-              ))}
+              {filteredAdmin.map((item) =>
+                item.children ? (
+                  <CollapsibleNav
+                    key={item.href}
+                    item={item}
+                    pathname={pathname}
+                    permissions={userPermissions}
+                    onNavigate={closeMobile}
+                  />
+                ) : (
+                  <div key={item.href} className="relative">
+                    <NavLink item={item} pathname={pathname} onClick={closeMobile} />
+                    {item.href === '/admin/users' && pendingCount > 0 && (
+                      <span
+                        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white"
+                        style={{ backgroundColor: '#ef4444' }}
+                      >
+                        {pendingCount}
+                      </span>
+                    )}
+                  </div>
+                ),
+              )}
             </div>
           </>
         )}

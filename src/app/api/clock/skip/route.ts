@@ -30,13 +30,6 @@ export async function POST(request: Request) {
       select: { isPartTime: true },
     });
 
-    if (!user?.isPartTime) {
-      return NextResponse.json(
-        { error: 'Only part-time employees can skip breaks' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const parsed = skipBreakSchema.safeParse(body);
     if (!parsed.success) {
@@ -47,6 +40,14 @@ export async function POST(request: Request) {
     }
 
     const { breakType } = parsed.data;
+
+    // Breaks (first/second) can only be skipped by part-time employees; lunch can be skipped by anyone
+    if (breakType !== 'lunch' && !user?.isPartTime) {
+      return NextResponse.json(
+        { error: 'Only part-time employees can skip breaks' },
+        { status: 403 }
+      );
+    }
     const fields = BREAK_FIELDS[breakType];
     const now = nowPstAsUtc();
     const { todayStart, todayEnd } = getTodayRangePST();

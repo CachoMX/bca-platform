@@ -17,6 +17,7 @@ const TIMEZONES = [
 export default function RegisterPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formLoadedAt] = useState(() => Date.now());
 
   const {
     register,
@@ -44,7 +45,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, _t: formLoadedAt }),
       });
 
       const json = await res.json();
@@ -110,6 +111,11 @@ export default function RegisterPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {/* Honeypot fields — hidden from humans, bots auto-fill them */}
+          <div className="absolute -left-[9999px]" aria-hidden="true" tabIndex={-1}>
+            <input type="text" name="website" autoComplete="off" tabIndex={-1} />
+            <input type="text" name="phone2" autoComplete="off" tabIndex={-1} />
+          </div>
           {/* First Name */}
           <div>
             <label

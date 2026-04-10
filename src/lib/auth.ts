@@ -60,12 +60,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           select: { permissionKey: true },
         });
 
+        // Per-user SMS override: grant 'sms' regardless of role permissions
+        const perms = rolePerms.map((p) => p.permissionKey);
+        if (user.smsAccess === true && !perms.includes('sms')) {
+          perms.push('sms');
+        }
+
         return {
           id: String(user.idUser),
           name: `${user.name} ${user.lastname}`,
           email: user.email ?? '',
           role: user.idRole ?? undefined,
-          permissions: rolePerms.map((p) => p.permissionKey),
+          permissions: perms,
         };
       },
     }),

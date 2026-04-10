@@ -16,6 +16,10 @@ import {
   Video,
   Map,
   Shield,
+  Monitor,
+  MonitorCog,
+  ClipboardList,
+  Ticket,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -85,6 +89,12 @@ export const navigation: NavItem[] = [
       { label: 'Video Reports', href: '/reports/videos', icon: Video, permissionKey: 'reports' },
     ],
   },
+  {
+    label: 'Maintenance',
+    href: '/maintenance',
+    icon: Monitor,
+    permissionKey: 'maintenance',
+  },
 ];
 
 export const adminNavigation: NavItem[] = [
@@ -123,5 +133,16 @@ export const adminNavigation: NavItem[] = [
     href: '/admin/permissions',
     icon: Shield,
     permissionKey: 'admin_permissions',
+  },
+  {
+    label: 'IT Maintenance',
+    href: '/admin/maintenance/computers',
+    icon: MonitorCog,
+    permissionKey: 'admin_maintenance',
+    children: [
+      { label: 'Computers', href: '/admin/maintenance/computers', icon: Monitor, permissionKey: 'admin_maintenance' },
+      { label: 'Logs', href: '/admin/maintenance/logs', icon: ClipboardList, permissionKey: 'admin_maintenance' },
+      { label: 'Tickets', href: '/admin/maintenance/tickets', icon: Ticket, permissionKey: 'admin_maintenance' },
+    ],
   },
 ];

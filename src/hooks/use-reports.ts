@@ -11,6 +11,7 @@ export interface ReportFilters {
   startDate?: string;
   endDate?: string;
   disposition?: string;
+  closerId?: string;
   page?: number;
   pageSize?: number;
 }
@@ -32,6 +33,8 @@ export interface ReportRow {
   agreementSent: string | null;
   callBack: string | null;
   closerName: string | null;
+  idDisposition: number;
+  idCloser: number | null;
 }
 
 export interface ReportsSummary {
@@ -70,6 +73,7 @@ function buildQueryString(filters: ReportFilters): string {
   if (filters.startDate) params.set('startDate', filters.startDate);
   if (filters.endDate) params.set('endDate', filters.endDate);
   if (filters.disposition && filters.disposition !== 'all') params.set('disposition', filters.disposition);
+  if (filters.closerId && filters.closerId !== 'all') params.set('closerId', filters.closerId);
   if (filters.page) params.set('page', String(filters.page));
   if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
   const qs = params.toString();
@@ -99,6 +103,23 @@ export function useReportsSummary(filters: ReportFilters) {
 /*  Mutations                                          */
 /* -------------------------------------------------- */
 
+export function useResendEmail() {
+  return useMutation<{ message: string; sentTo: string }, Error, number>({
+    mutationFn: async (idCall) => {
+      const res = await fetch('/api/calls/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idCall }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to send email');
+      }
+      return res.json();
+    },
+  });
+}
+
 export function useExportCSV() {
   return useMutation<void, Error, ReportFilters>({
     mutationFn: async (filters) => {
@@ -107,6 +128,7 @@ export function useExportCSV() {
       if (filters.startDate) params.set('startDate', filters.startDate);
       if (filters.endDate) params.set('endDate', filters.endDate);
       if (filters.disposition && filters.disposition !== 'all') params.set('disposition', filters.disposition);
+      if (filters.closerId && filters.closerId !== 'all') params.set('closerId', filters.closerId);
       params.set('format', 'csv');
 
       const res = await fetch(`/api/reports?${params.toString()}`);

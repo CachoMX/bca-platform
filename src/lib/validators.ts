@@ -77,6 +77,7 @@ export const createUserSchema = z.object({
   country: z.string().max(100).optional(),
   sendEmail: z.boolean().default(false),
   isPartTime: z.boolean().default(false),
+  smsAccess: z.boolean().default(false),
 });
 
 export const updateUserSchema = createUserSchema.partial().omit({ password: true }).extend({
@@ -126,7 +127,7 @@ export const rebuttalSchema = z.object({
 // SMS
 export const sendSmsSchema = z.object({
   phoneNumber: z.string().min(10).max(15),
-  messageBody: z.string().min(1).max(1600),
+  messageBody: z.string().max(1600).default(''),
 });
 
 // Import
@@ -188,6 +189,61 @@ export const updateProfileSchema = z.object({
   path: ['currentPassword'],
 });
 
+// Maintenance — Computers
+export const createComputerSchema = z.object({
+  computerName: z.string().min(1).max(100),
+  remotePcId: z.string().max(100).optional(),
+  assignedUserIds: z.array(z.number().int().positive()).optional(),
+  operatingSystem: z.string().max(100).optional(),
+  specs: z.string().max(5000).optional(),
+  notes: z.string().max(5000).optional(),
+  maintenanceIntervalMonths: z.number().int().min(1).max(12).default(3),
+});
+
+export const updateComputerSchema = z.object({
+  computerName: z.string().min(1).max(100).optional(),
+  remotePcId: z.string().max(100).optional(),
+  assignedUserIds: z.array(z.number().int().positive()).optional(),
+  operatingSystem: z.string().max(100).optional(),
+  specs: z.string().max(5000).optional(),
+  notes: z.string().max(5000).optional(),
+  maintenanceIntervalMonths: z.number().int().min(1).max(12).optional(),
+  status: z.enum(['active', 'inactive', 'retired']).optional(),
+});
+
+// Maintenance — Logs
+const MAINTENANCE_TOOLS = [
+  'CCleaner', 'Malwarebytes', 'TempFiles', 'WindowsUpdate',
+  'DiskCleanup', 'BrowserCache', 'StartupOptimization', 'DriverUpdates', 'Other',
+] as const;
+
+export const createMaintenanceLogSchema = z.object({
+  computerId: z.number().int().positive(),
+  maintenanceType: z.enum(['preventive', 'corrective', 'emergency']),
+  performedDate: z.string().min(1),
+  durationMinutes: z.number().int().positive().optional().nullable(),
+  toolsUsed: z.array(z.enum(MAINTENANCE_TOOLS)).optional(),
+  issuesFound: z.string().max(5000).optional(),
+  actionsTaken: z.string().max(5000).optional(),
+  notes: z.string().max(5000).optional(),
+  relatedTicketId: z.number().int().positive().optional().nullable(),
+});
+
+// Maintenance — Tickets
+export const createTicketSchema = z.object({
+  computerId: z.number().int().positive(),
+  subject: z.string().min(1).max(200),
+  description: z.string().min(1).max(5000),
+  priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
+});
+
+export const updateTicketSchema = z.object({
+  status: z.enum(['open', 'in-progress', 'resolved', 'closed']).optional(),
+  assignedToUserId: z.number().int().positive().optional().nullable(),
+  resolutionNotes: z.string().max(5000).optional(),
+  resolvedDate: z.string().optional().nullable(),
+});
+
 // Type exports for use in components
 export type LoginInput = z.infer<typeof loginSchema>;
 export type LogCallInput = z.infer<typeof logCallSchema>;
@@ -205,3 +261,8 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+export type CreateComputerInput = z.infer<typeof createComputerSchema>;
+export type UpdateComputerInput = z.infer<typeof updateComputerSchema>;
+export type CreateMaintenanceLogInput = z.infer<typeof createMaintenanceLogSchema>;
+export type CreateTicketInput = z.infer<typeof createTicketSchema>;
+export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;
