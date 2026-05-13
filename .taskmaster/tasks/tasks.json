@@ -1,0 +1,165 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Create Prisma Database Schema and Models",
+        "description": "Add Computer, MaintenanceLog, and MaintenanceTicket models to Prisma schema in benjaise_sqluser2 schema with all required fields, relations, and indexes",
+        "details": "Add three new models to schema.prisma:\n\n1. Computer model with fields: id, computerName, remotePcId, assignedUserId, operatingSystem, specs, notes, status, maintenanceIntervalMonths, createdAt, updatedAt\n2. MaintenanceLog model with fields: id, computerId, maintenanceType, performedDate, technicianId, durationMinutes, toolsUsed, issuesFound, actionsTaken, notes, relatedTicketId, createdAt\n3. MaintenanceTicket model with fields: id, computerId, reportedByUserId, subject, description, priority, status, resolvedDate, resolutionNotes, assignedToUserId, createdAt, updatedAt\n\nInclude all foreign key relations and @@map directives for benjaise_sqluser2 schema. Add database indexes: IX_Computers_Status, IX_Computers_AssignedUser, IX_MaintenanceLogs_Computer_Date, IX_MaintenanceLogs_Type, IX_MaintenanceTickets_Computer, IX_MaintenanceTickets_Status, IX_MaintenanceTickets_ReportedBy. Run 'npx prisma migrate dev' to apply changes.",
+        "testStrategy": "Verify schema compiles without errors, migration runs successfully, and all tables are created in benjaise_sqluser2 schema with correct field types and constraints",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Update Permission System Configuration",
+        "description": "Add new permission keys and route mappings for maintenance functionality in config files",
+        "details": "Update config/permission-keys.ts:\n1. Add to PERMISSION_LABELS: 'maintenance': 'IT Maintenance', 'admin_maintenance': 'Maintenance Admin'\n2. Add to getPermissionKeyForRoute(): if (pathname.startsWith('/maintenance')) return 'maintenance'; if (pathname.startsWith('/admin/maintenance')) return 'admin_maintenance';\n3. Add to getPermissionKeyForApiRoute(): if (pathname.startsWith('/api/maintenance')) return 'maintenance'; if (pathname.startsWith('/api/admin/maintenance')) return 'admin_maintenance';\n\nEnsure TypeScript strict mode compliance and follow existing patterns.",
+        "testStrategy": "Test that permission system correctly identifies maintenance routes and applies appropriate permission checks. Verify no TypeScript errors and existing functionality remains intact.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Update Navigation Configuration",
+        "description": "Add maintenance navigation items to main and admin navigation menus with proper icons and permission keys",
+        "details": "Update config/navigation.ts:\n1. Import Monitor, MonitorCog, ClipboardList, Ticket from lucide-react\n2. Add to main navigation: { label: 'Maintenance', href: '/maintenance', icon: Monitor, permissionKey: 'maintenance' }\n3. Add to adminNavigation: IT Maintenance parent with children for Computers, Logs, and Tickets pages\n4. Use MonitorCog for parent, Monitor for computers, ClipboardList for logs, Ticket for tickets\n5. All admin items use 'admin_maintenance' permission key\n\nFollow existing navigation patterns and ensure proper TypeScript typing.",
+        "testStrategy": "Verify navigation items appear correctly for users with appropriate permissions, icons render properly, and navigation structure follows existing patterns without breaking current functionality.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Create Admin Maintenance API Routes - Computers",
+        "description": "Implement CRUD API routes for computer management with proper validation and authentication",
+        "details": "Create API routes in /api/admin/maintenance/computers/:\n1. GET route: Return all computers with computed fields (lastPreventiveDate, nextDueDate, maintenanceStatus, openTicketCount). Support query params: status, maintenanceStatus, search\n2. POST route: Create new computer with zod validation for required fields\n3. PATCH route for /[id]: Update computer with partial fields validation\n4. DELETE route for /[id]: Soft delete by setting status = 'retired'\n\nUse getServerSession for auth, validate admin_maintenance permission, return NextResponse.json(). Include proper error handling and TypeScript strict mode compliance.",
+        "testStrategy": "Test all CRUD operations with valid/invalid data, verify permission checks work, confirm computed fields calculate correctly, and ensure proper error responses for unauthorized access.",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Create Admin Maintenance API Routes - Logs and Tickets",
+        "description": "Implement API routes for maintenance logs and ticket management with proper business logic",
+        "details": "Create API routes:\n1. /api/admin/maintenance/logs - GET: Return logs with joins to computer/technician names, support pagination and filters. POST: Create log with tools validation, auto-resolve linked tickets\n2. /api/admin/maintenance/tickets - GET: Return all tickets with pagination/filters. PATCH /[id]: Update ticket status, assignment, resolution\n3. /api/admin/maintenance/dashboard - GET: Return summary stats (totalComputers, overdueCount, dueSoonCount, openTicketsCount, urgentTicketsCount, recentLogs, upcomingMaintenance)\n\nImplement business logic: when logging maintenance with relatedTicketId, update ticket status to 'resolved' and set resolvedDate. Use zod for validation, proper error handling.",
+        "testStrategy": "Test log creation updates ticket status correctly, dashboard returns accurate counts, pagination works properly, and all filters apply correctly. Verify business logic for ticket resolution.",
+        "priority": "high",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Create Employee Maintenance API Routes",
+        "description": "Implement employee-facing API routes for viewing assigned computer and managing tickets",
+        "details": "Create API routes:\n1. /api/maintenance/my-computer - GET: Return computer assigned to current user with computed maintenance status, next due date, and open ticket count\n2. /api/maintenance/tickets - GET: Return tickets submitted by current user with optional status filter. POST: Create new ticket with validation that computerId belongs to current user (admin can override)\n\nUse session.user.id for user identification, validate 'maintenance' permission, implement proper error handling for unassigned computers. Follow existing API patterns with zod validation and NextResponse.json().",
+        "testStrategy": "Test that employees can only see their assigned computer, can create tickets for their computer only, and cannot access other users' data. Verify proper error handling for users without assigned computers.",
+        "priority": "medium",
+        "dependencies": [
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Create Maintenance Hooks with TanStack Query",
+        "description": "Implement custom React hooks for all maintenance-related API calls using TanStack Query v5",
+        "details": "Create src/hooks/use-maintenance.ts following patterns from use-sms.ts and use-calls.ts:\n\nEmployee hooks:\n- useMyComputer(): Query for assigned computer with computed fields\n- useMyTickets(filters): Query for user's tickets with optional status filter\n- useCreateTicket(): Mutation for creating maintenance tickets\n\nAdmin hooks:\n- useAdminComputers(filters): Query with search, status, maintenance status filters\n- useCreateComputer(), useUpdateComputer(): Mutations for computer CRUD\n- useAdminLogs(filters): Query with pagination and date filters\n- useCreateLog(): Mutation for logging maintenance\n- useAdminTickets(filters): Query with status, priority, computer filters\n- useUpdateTicket(): Mutation for ticket updates\n- useMaintenanceDashboard(): Query for dashboard statistics\n\nUse proper TypeScript typing, error handling, and optimistic updates where appropriate.",
+        "testStrategy": "Test all hooks return properly typed data, mutations trigger appropriate refetches, error states are handled correctly, and loading states work as expected. Verify cache invalidation works properly.",
+        "priority": "high",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Build Admin Computers Management Page",
+        "description": "Create the main admin page for computer management with data table, filters, and CRUD operations",
+        "details": "Create src/app/(dashboard)/admin/maintenance/computers/page.tsx:\n\n1. Summary cards: Total Active Computers, Overdue (red), Due Soon (amber), Open Tickets (blue)\n2. Data table with columns: Computer Name, RemotePC ID, Assigned Employee, OS, Last Maintenance, Next Due, Status, Open Tickets, Actions\n3. Row actions: [Log Maintenance] [Edit] [View History] buttons\n4. Filters: search by name/employee, filter by maintenanceStatus, filter by status\n5. \"Add Computer\" dialog with form fields: computerName (required), remotePcId, assignedUserId (Select), operatingSystem, specs (textarea), maintenanceIntervalMonths (Select: 1|2|3|4|6), notes\n\nUse shadcn/ui components, CSS variables for theming, proper status badges with colors (overdue=red, due-soon=amber, ok=green, never=gray). Implement toast notifications for actions.",
+        "testStrategy": "Test table displays correct data with proper status colors, filters work correctly, CRUD operations succeed with proper feedback, and responsive design works on different screen sizes.",
+        "priority": "high",
+        "dependencies": [
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Build Admin Maintenance Logs Page",
+        "description": "Create admin page for viewing and creating maintenance logs with detailed forms",
+        "details": "Create src/app/(dashboard)/admin/maintenance/logs/page.tsx:\n\n1. Data table with columns: Date, Computer, Employee, Type (badge), Technician, Duration, Tools Used (pill badges), Ticket #, Notes\n2. \"Log Maintenance\" dialog with form:\n   - Computer (Select, required)\n   - Type (Preventive|Corrective|Emergency)\n   - Date & Time (datetime-local, defaults to now)\n   - Duration in minutes\n   - Tools Used (multi-checkbox): CCleaner, Malwarebytes, Temp Files Cleanup, Windows Update, Disk Cleanup, Browser Cache, Startup Optimization, Driver Updates, Other\n   - Issues Found (textarea)\n   - Actions Taken (textarea)\n   - Notes (textarea)\n   - Link to Ticket (Select from open tickets of chosen computer)\n\nImplement proper form validation, use maintenance type badges with appropriate colors, and show tools as pill badges in the table.",
+        "testStrategy": "Test form validation works correctly, tools selection saves properly, linking tickets updates their status, and table displays all data with proper formatting and badges.",
+        "priority": "medium",
+        "dependencies": [
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Build Admin Maintenance Tickets Page",
+        "description": "Create admin page for managing maintenance tickets with status updates and assignment",
+        "details": "Create src/app/(dashboard)/admin/maintenance/tickets/page.tsx:\n\n1. Data table with columns: Ticket #, Subject, Computer, Reported By, Priority, Status, Date, Assigned To, Actions\n2. Row actions: [Assign to Me] [Log Fix] [Close] buttons\n3. Expandable rows showing full description and resolution notes\n4. Filters: status, priority, computer dropdown\n5. Status badges: open=blue, in-progress=amber, resolved=green, closed=gray\n6. Priority badges: urgent=red, high=orange, normal=blue, low=gray\n\nImplement quick actions for common operations, proper badge colors using CSS variables, and responsive table design. Include pagination for large datasets.",
+        "testStrategy": "Test ticket status updates work correctly, assignment functionality works, expandable rows show complete information, filters apply properly, and quick actions provide appropriate feedback.",
+        "priority": "medium",
+        "dependencies": [
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Build Employee Maintenance Page",
+        "description": "Create employee-facing page for viewing computer status and submitting maintenance requests",
+        "details": "Create src/app/(dashboard)/maintenance/page.tsx with three main sections:\n\n1. \"My Computer\" card:\n   - Display computer name, RemotePC ID, OS, specs\n   - Show last preventive maintenance date\n   - Display next due date with status badge: OVERDUE (red), DUE SOON (amber), UP TO DATE (green), NEVER SERVICED (gray)\n   - Handle case where no computer is assigned: \"No computer assigned. Contact your administrator.\"\n\n2. \"My Tickets\" section:\n   - List user's tickets with status badges\n   - Show subject, date, priority, and current status\n   - \"Request Maintenance\" button\n\n3. \"Request Maintenance\" Dialog:\n   - Subject field (required)\n   - Priority select (Low|Normal|High|Urgent)\n   - Description textarea (required)\n   - Form validation and submission\n\nUse CSS variables for consistent theming and proper responsive design.",
+        "testStrategy": "Test page displays correct computer information, maintenance status shows appropriate colors, ticket creation works with validation, and users without assigned computers see appropriate message.",
+        "priority": "medium",
+        "dependencies": [
+          10
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Implement Maintenance Status Computation Logic",
+        "description": "Add business logic for calculating maintenance due dates and status labels across the application",
+        "details": "Implement maintenance status computation logic in API routes and frontend:\n\n1. Next Maintenance Due Date calculation:\n   - lastMaintenanceDate = MAX(performedDate WHERE maintenanceType = 'preventive')\n   - nextDueDate = lastMaintenanceDate + maintenanceIntervalMonths\n   - If no logs: nextDueDate = Computer.createdAt + maintenanceIntervalMonths\n\n2. Maintenance Status Labels:\n   - \"overdue\" → nextDueDate < today\n   - \"due-soon\" → nextDueDate within 30 days from today\n   - \"ok\" → nextDueDate more than 30 days away\n   - \"never\" → no preventive maintenance ever performed\n\n3. Apply this logic consistently in:\n   - API route responses (computed fields)\n   - Dashboard statistics\n   - Status badge rendering\n   - Filter functionality\n\nCreate utility functions for reusable date calculations and status determination.",
+        "testStrategy": "Test that maintenance status calculations are accurate across different scenarios (no maintenance, overdue, due soon, up to date), verify consistency between API responses and UI display, and confirm date calculations handle edge cases correctly.",
+        "priority": "high",
+        "dependencies": [
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2026-04-08T19:49:25.804Z",
+      "updated": "2026-04-08T19:49:25.804Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

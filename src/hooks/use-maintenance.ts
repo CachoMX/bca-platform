@@ -19,6 +19,7 @@ export interface Computer {
   id: number;
   computerName: string;
   remotePcId: string | null;
+  ipAddress: string | null;
   operatingSystem: string | null;
   specs: string | null;
   notes: string | null;
@@ -31,6 +32,20 @@ export interface Computer {
   nextDueDate: string;
   maintenanceStatus: MaintenanceStatus;
   openTicketCount: number;
+}
+
+export interface Printer {
+  id: number;
+  printerName: string;
+  brandModel: string | null;
+  ipAddress: string | null;
+  location: string | null;
+  foldersSharing: boolean;
+  sharedFolders: string | null;
+  notes: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface MyComputer {
@@ -125,6 +140,7 @@ export interface PaginatedResponse<T> {
 export interface CreateComputerPayload {
   computerName: string;
   remotePcId?: string;
+  ipAddress?: string;
   assignedUserIds?: number[];
   operatingSystem?: string;
   specs?: string;
@@ -135,12 +151,34 @@ export interface CreateComputerPayload {
 export interface UpdateComputerPayload {
   computerName?: string;
   remotePcId?: string;
+  ipAddress?: string;
   assignedUserIds?: number[];
   operatingSystem?: string;
   specs?: string;
   notes?: string;
   maintenanceIntervalMonths?: number;
   status?: ComputerStatus;
+}
+
+export interface CreatePrinterPayload {
+  printerName: string;
+  brandModel?: string;
+  ipAddress?: string;
+  location?: string;
+  foldersSharing: boolean;
+  sharedFolders?: string;
+  notes?: string;
+}
+
+export interface UpdatePrinterPayload {
+  printerName?: string;
+  brandModel?: string;
+  ipAddress?: string;
+  location?: string;
+  foldersSharing?: boolean;
+  sharedFolders?: string;
+  notes?: string;
+  status?: string;
 }
 
 export interface CreateLogPayload {
@@ -376,5 +414,57 @@ export function useMaintenanceDashboard() {
     queryKey: ['maintenance-dashboard'],
     queryFn: () => fetchJson('/api/admin/maintenance/dashboard'),
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+/* -------------------------------------------------- */
+/*  Admin — Printers                                   */
+/* -------------------------------------------------- */
+
+export function useAdminPrinters(filters?: { search?: string; status?: string }) {
+  const params = new URLSearchParams();
+  if (filters?.search) params.set('search', filters.search);
+  if (filters?.status) params.set('status', filters.status);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+
+  return useQuery<Printer[]>({
+    queryKey: ['maintenance-printers', filters],
+    queryFn: () => fetchJson(`/api/admin/maintenance/printers${qs}`),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useCreatePrinter() {
+  const qc = useQueryClient();
+  return useMutation<Printer, Error, CreatePrinterPayload>({
+    mutationFn: (payload) =>
+      fetchJson('/api/admin/maintenance/printers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['maintenance-printers'] }),
+  });
+}
+
+export function useUpdatePrinter() {
+  const qc = useQueryClient();
+  return useMutation<Printer, Error, { id: number; data: UpdatePrinterPayload }>({
+    mutationFn: ({ id, data }) =>
+      fetchJson(`/api/admin/maintenance/printers/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['maintenance-printers'] }),
+  });
+}
+
+export function useRetirePrinter() {
+  const qc = useQueryClient();
+  return useMutation<Printer, Error, number>({
+    mutationFn: (id) =>
+      fetchJson(`/api/admin/maintenance/printers/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['maintenance-printers'] }),
   });
 }

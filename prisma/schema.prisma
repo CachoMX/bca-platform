@@ -299,6 +299,26 @@ model SmsTemplate {
   @@schema("benjaise_sqluser2")
 }
 
+// ─── Blacklist ─────────────────────────────────────────────────────────────────
+
+model BlockedName {
+  id        Int      @id @default(autoincrement()) @map("Id")
+  keyword   String   @map("Keyword") @db.NVarChar(200)
+  createdAt DateTime @default(now()) @map("CreatedAt")
+
+  @@map("BlockedNames")
+  @@schema("dbo")
+}
+
+model BlockedAreaCode {
+  id        Int      @id @default(autoincrement()) @map("Id")
+  areaCode  String   @map("AreaCode") @db.NVarChar(10)
+  createdAt DateTime @default(now()) @map("CreatedAt")
+
+  @@map("BlockedAreaCodes")
+  @@schema("dbo")
+}
+
 // ─── IT Maintenance ────────────────────────────────────────────────────────────
 
 model ComputerAssignment {
@@ -320,6 +340,7 @@ model Computer {
   id                        Int      @id @default(autoincrement()) @map("Id")
   computerName              String   @map("ComputerName")
   remotePcId                String?  @map("RemotePcId")
+  ipAddress                 String?  @map("IpAddress")
   assignedUserId            Int?     @map("AssignedUserId")
   operatingSystem           String?  @map("OperatingSystem")
   specs                     String?  @map("Specs") @db.NVarChar(Max)
@@ -387,5 +408,22 @@ model MaintenanceTicket {
   @@index([status], map: "IX_MaintenanceTickets_Status")
   @@index([reportedByUserId], map: "IX_MaintenanceTickets_ReportedBy")
   @@map("MaintenanceTickets")
+  @@schema("benjaise_sqluser2")
+}
+
+model Printer {
+  id             Int      @id @default(autoincrement()) @map("Id")
+  printerName    String   @map("PrinterName")
+  brandModel     String?  @map("BrandModel")
+  ipAddress      String?  @map("IpAddress")
+  location       String?  @map("Location")
+  foldersSharing Boolean  @default(false) @map("FoldersSharing")
+  sharedFolders  String?  @map("SharedFolders") @db.NVarChar(Max)
+  notes          String?  @map("Notes") @db.NVarChar(Max)
+  status         String   @default("active") @map("Status")
+  createdAt      DateTime @default(now()) @map("CreatedAt")
+  updatedAt      DateTime @updatedAt @map("UpdatedAt")
+
+  @@map("Printers")
   @@schema("benjaise_sqluser2")
 }

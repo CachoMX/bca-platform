@@ -38,7 +38,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Call not found' }, { status: 404 });
     }
 
-    if (!EMAIL_DISPOSITIONS.includes(call.idDisposition)) {
+    const dispositionId = call.idDisposition;
+    if (dispositionId == null || !EMAIL_DISPOSITIONS.includes(dispositionId)) {
       return NextResponse.json(
         { error: 'Email can only be sent for Potential Client, Call Back, or Info Request dispositions' },
         { status: 400 },
@@ -51,11 +52,11 @@ export async function POST(request: NextRequest) {
       ? `${call.closer.name ?? ''} ${call.closer.lastname ?? ''}`.trim()
       : 'Team';
 
-    const typeLabel = call.idDisposition === 4 ? 'Potential Client'
-      : call.idDisposition === 8 ? 'Call Back Request'
+    const typeLabel = dispositionId === 4 ? 'Potential Client'
+      : dispositionId === 8 ? 'Call Back Request'
       : 'Info Request';
-    const emailType = call.idDisposition === 4 ? 'potential-client'
-      : call.idDisposition === 8 ? 'callback'
+    const emailType = dispositionId === 4 ? 'potential-client'
+      : dispositionId === 8 ? 'callback'
       : 'info-request';
 
     const debtAmount = call.pDebtorAmmount

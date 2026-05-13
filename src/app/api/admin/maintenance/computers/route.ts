@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { normalizeAssignedUserIds } from '@/lib/maintenance';
 import { prisma } from '@/lib/prisma';
 import { createComputerSchema } from '@/lib/validators';
 
@@ -77,6 +78,7 @@ export async function GET(request: NextRequest) {
         id: c.id,
         computerName: c.computerName,
         remotePcId: c.remotePcId,
+        ipAddress: c.ipAddress,
         operatingSystem: c.operatingSystem,
         specs: c.specs,
         notes: c.notes,
@@ -122,14 +124,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { computerName, remotePcId, assignedUserIds, operatingSystem, specs, notes, maintenanceIntervalMonths } =
-      parsed.data;
+    const {
+      computerName,
+      remotePcId,
+      ipAddress,
+      assignedUserIds,
+      operatingSystem,
+      specs,
+      notes,
+      maintenanceIntervalMonths,
+    } = parsed.data;
+    const normalizedAssignedUserIds = normalizeAssignedUserIds(assignedUserIds);
 
     const computer = await prisma.$transaction(async (tx) => {
       const c = await tx.computer.create({
         data: {
           computerName,
           remotePcId: remotePcId ?? null,
+          ipAddress: ipAddress ?? null,
           operatingSystem: operatingSystem ?? null,
           specs: specs ?? null,
           notes: notes ?? null,
@@ -137,10 +149,9 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      if (assignedUserIds && assignedUserIds.length > 0) {
+      if (normalizedAssignedUserIds.length > 0) {
         await tx.computerAssignment.createMany({
-          data: assignedUserIds.map((userId) => ({ computerId: c.id, userId })),
-          skipDuplicates: true,
+          data: normalizedAssignedUserIds.map((userId) => ({ computerId: c.id, userId })),
         });
       }
 

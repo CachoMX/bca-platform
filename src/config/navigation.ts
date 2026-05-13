@@ -20,6 +20,8 @@ import {
   MonitorCog,
   ClipboardList,
   Ticket,
+  Printer,
+  Ban,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -129,6 +131,12 @@ export const adminNavigation: NavItem[] = [
     permissionKey: 'admin_import',
   },
   {
+    label: 'Blacklist',
+    href: '/admin/blacklist',
+    icon: Ban,
+    permissionKey: 'admin_import',
+  },
+  {
     label: 'Permissions',
     href: '/admin/permissions',
     icon: Shield,
@@ -141,6 +149,7 @@ export const adminNavigation: NavItem[] = [
     permissionKey: 'admin_maintenance',
     children: [
       { label: 'Computers', href: '/admin/maintenance/computers', icon: Monitor, permissionKey: 'admin_maintenance' },
+      { label: 'Printers', href: '/admin/maintenance/printers', icon: Printer, permissionKey: 'admin_maintenance' },
       { label: 'Logs', href: '/admin/maintenance/logs', icon: ClipboardList, permissionKey: 'admin_maintenance' },
       { label: 'Tickets', href: '/admin/maintenance/tickets', icon: Ticket, permissionKey: 'admin_maintenance' },
     ],

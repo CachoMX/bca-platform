@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Plus, Pencil, Trash2, Search, Monitor,
   AlertCircle, Clock, CheckCircle, Ticket, X,
@@ -44,6 +44,84 @@ function fmtDate(d: string | null | undefined) {
 }
 
 /* -------------------------------------------------- */
+/*  Inline editable cell                               */
+/* -------------------------------------------------- */
+
+function InlineEditCell({
+  value,
+  onSave,
+  placeholder = '—',
+}: {
+  value: string | null;
+  onSave: (next: string) => Promise<void>;
+  placeholder?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? '');
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  function startEdit() {
+    setDraft(value ?? '');
+    setEditing(true);
+  }
+
+  async function commit() {
+    setSaving(true);
+    try {
+      await onSave(draft.trim());
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function cancel() {
+    setDraft(value ?? '');
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') cancel();
+        }}
+        onBlur={commit}
+        disabled={saving}
+        className="w-full rounded border px-2 py-0.5 text-sm outline-none focus:ring-1"
+        style={{
+          borderColor: 'var(--accent)',
+          background: 'var(--bg-card)',
+          color: 'var(--text-primary)',
+          minWidth: 80,
+        }}
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={startEdit}
+      className="group flex items-center gap-1 rounded px-1 py-0.5 text-left text-sm transition-colors hover:bg-[var(--bg-elevated)]"
+      style={{ color: value ? 'var(--text-secondary)' : 'var(--text-muted)', minWidth: 60 }}
+      title="Click to edit"
+    >
+      <span>{value || placeholder}</span>
+      <Pencil size={10} className="opacity-0 transition-opacity group-hover:opacity-60" />
+    </button>
+  );
+}
+
+/* -------------------------------------------------- */
 /*  Multi-user selector                                */
 /* -------------------------------------------------- */
 
@@ -75,7 +153,6 @@ function UserMultiSelect({
 
   return (
     <div className="space-y-2">
-      {/* Selected chips */}
       {selectedUsers.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {selectedUsers.map((u) => (
@@ -92,7 +169,6 @@ function UserMultiSelect({
           ))}
         </div>
       )}
-      {/* Search */}
       <div className="relative">
         <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
         <Input
@@ -102,7 +178,6 @@ function UserMultiSelect({
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-      {/* Checkbox list */}
       <div
         className="max-h-40 overflow-y-auto rounded-md border p-1"
         style={{ borderColor: 'var(--border)' }}
@@ -137,6 +212,7 @@ function UserMultiSelect({
 interface ComputerForm {
   computerName: string;
   remotePcId: string;
+  ipAddress: string;
   assignedUserIds: number[];
   operatingSystem: string;
   specs: string;
@@ -147,6 +223,7 @@ interface ComputerForm {
 const EMPTY_FORM: ComputerForm = {
   computerName: '',
   remotePcId: '',
+  ipAddress: '',
   assignedUserIds: [],
   operatingSystem: '',
   specs: '',
@@ -158,6 +235,7 @@ function formFromComputer(c: Computer): ComputerForm {
   return {
     computerName: c.computerName,
     remotePcId: c.remotePcId ?? '',
+    ipAddress: c.ipAddress ?? '',
     assignedUserIds: c.assignedUsers.map((u) => u.id),
     operatingSystem: c.operatingSystem ?? '',
     specs: c.specs ?? '',
@@ -204,6 +282,7 @@ export default function ComputersPage() {
     const payload = {
       computerName: form.computerName.trim(),
       remotePcId: form.remotePcId.trim() || undefined,
+      ipAddress: form.ipAddress.trim() || undefined,
       assignedUserIds: form.assignedUserIds,
       operatingSystem: form.operatingSystem.trim() || undefined,
       specs: form.specs.trim() || undefined,
@@ -230,6 +309,14 @@ export default function ComputersPage() {
       showToast('Computer retired.', 'success');
     } catch (e) { showToast((e as Error).message, 'error'); }
     finally { setConfirmRetire(null); }
+  }
+
+  async function inlineSave(id: number, field: 'remotePcId' | 'ipAddress', value: string) {
+    try {
+      await updateComputer.mutateAsync({ id, data: { [field]: value || undefined } });
+    } catch (e) {
+      showToast((e as Error).message, 'error');
+    }
   }
 
   const totalActive = computers?.filter((c) => c.status === 'active').length ?? 0;
@@ -312,8 +399,8 @@ export default function ComputersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                    {['Computer', 'RemotePC ID', 'Assigned To', 'OS', 'Last Maint.', 'Next Due', 'Status', 'Tickets', 'Actions'].map((h) => (
-                      <th key={h} className="pb-2 text-left font-medium">{h}</th>
+                    {['Computer', 'RemotePC ID ✎', 'IP Address ✎', 'Assigned To', 'OS', 'Last Maint.', 'Next Due', 'Status', 'Tickets', 'Actions'].map((h) => (
+                      <th key={h} className="pb-2 pr-3 text-left font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -321,9 +408,22 @@ export default function ComputersPage() {
                   {(computers ?? []).map((c) => (
                     <tr key={c.id} style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-primary)' }}
                       className="hover:bg-[var(--bg-elevated)] transition-colors">
-                      <td className="py-3 font-medium">{c.computerName}</td>
-                      <td className="py-3" style={{ color: 'var(--text-secondary)' }}>{c.remotePcId ?? '—'}</td>
-                      <td className="py-3">
+                      <td className="py-3 pr-3 font-medium">{c.computerName}</td>
+                      <td className="py-2 pr-3">
+                        <InlineEditCell
+                          value={c.remotePcId}
+                          placeholder="—"
+                          onSave={(v) => inlineSave(c.id, 'remotePcId', v)}
+                        />
+                      </td>
+                      <td className="py-2 pr-3">
+                        <InlineEditCell
+                          value={c.ipAddress}
+                          placeholder="—"
+                          onSave={(v) => inlineSave(c.id, 'ipAddress', v)}
+                        />
+                      </td>
+                      <td className="py-3 pr-3">
                         {c.assignedUsers.length === 0
                           ? <span style={{ color: 'var(--text-muted)' }}>Unassigned</span>
                           : <div className="flex flex-wrap gap-1">
@@ -335,11 +435,11 @@ export default function ComputersPage() {
                               ))}
                             </div>}
                       </td>
-                      <td className="py-3" style={{ color: 'var(--text-secondary)' }}>{c.operatingSystem ?? '—'}</td>
-                      <td className="py-3">{fmtDate(c.lastPreventiveDate)}</td>
-                      <td className="py-3">{fmtDate(c.nextDueDate)}</td>
-                      <td className="py-3">{statusBadge(c.maintenanceStatus)}</td>
-                      <td className="py-3">
+                      <td className="py-3 pr-3" style={{ color: 'var(--text-secondary)' }}>{c.operatingSystem ?? '—'}</td>
+                      <td className="py-3 pr-3">{fmtDate(c.lastPreventiveDate)}</td>
+                      <td className="py-3 pr-3">{fmtDate(c.nextDueDate)}</td>
+                      <td className="py-3 pr-3">{statusBadge(c.maintenanceStatus)}</td>
+                      <td className="py-3 pr-3">
                         {c.openTicketCount > 0
                           ? <Badge variant="outline">{c.openTicketCount} open</Badge>
                           : <span style={{ color: 'var(--text-muted)' }}>—</span>}
@@ -358,7 +458,7 @@ export default function ComputersPage() {
                     </tr>
                   ))}
                   {(computers ?? []).length === 0 && (
-                    <tr><td colSpan={9} className="py-8 text-center" style={{ color: 'var(--text-muted)' }}>No computers found.</td></tr>
+                    <tr><td colSpan={10} className="py-8 text-center" style={{ color: 'var(--text-muted)' }}>No computers found.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -385,6 +485,10 @@ export default function ComputersPage() {
                 <Input value={form.remotePcId} onChange={(e) => setForm({ ...form, remotePcId: e.target.value })} placeholder="RC-12345" />
               </div>
               <div>
+                <Label>IP Address</Label>
+                <Input value={form.ipAddress} onChange={(e) => setForm({ ...form, ipAddress: e.target.value })} placeholder="192.168.1.100" />
+              </div>
+              <div>
                 <Label>OS</Label>
                 <Input value={form.operatingSystem} onChange={(e) => setForm({ ...form, operatingSystem: e.target.value })} placeholder="Windows 11 Pro" />
               </div>
@@ -399,7 +503,7 @@ export default function ComputersPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="col-span-2">
                 <Label>Specs</Label>
                 <Input value={form.specs} onChange={(e) => setForm({ ...form, specs: e.target.value })} placeholder="i5 8GB RAM 256GB SSD" />
               </div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { normalizeAssignedUserIds } from '@/lib/maintenance';
 import { prisma } from '@/lib/prisma';
 import { updateComputerSchema } from '@/lib/validators';
 
@@ -29,6 +30,7 @@ export async function PATCH(
     }
 
     const { assignedUserIds, ...computerFields } = parsed.data;
+    const normalizedAssignedUserIds = normalizeAssignedUserIds(assignedUserIds);
 
     const computer = await prisma.$transaction(async (tx) => {
       const c = await tx.computer.update({
@@ -39,10 +41,9 @@ export async function PATCH(
       // Only replace assignments when assignedUserIds is explicitly provided
       if (assignedUserIds !== undefined) {
         await tx.computerAssignment.deleteMany({ where: { computerId } });
-        if (assignedUserIds.length > 0) {
+        if (normalizedAssignedUserIds.length > 0) {
           await tx.computerAssignment.createMany({
-            data: assignedUserIds.map((userId) => ({ computerId, userId })),
-            skipDuplicates: true,
+            data: normalizedAssignedUserIds.map((userId) => ({ computerId, userId })),
           });
         }
       }

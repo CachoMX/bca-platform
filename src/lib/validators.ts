@@ -193,6 +193,7 @@ export const updateProfileSchema = z.object({
 export const createComputerSchema = z.object({
   computerName: z.string().min(1).max(100),
   remotePcId: z.string().max(100).optional(),
+  ipAddress: z.string().max(45).optional(),
   assignedUserIds: z.array(z.number().int().positive()).optional(),
   operatingSystem: z.string().max(100).optional(),
   specs: z.string().max(5000).optional(),
@@ -203,12 +204,35 @@ export const createComputerSchema = z.object({
 export const updateComputerSchema = z.object({
   computerName: z.string().min(1).max(100).optional(),
   remotePcId: z.string().max(100).optional(),
+  ipAddress: z.string().max(45).optional(),
   assignedUserIds: z.array(z.number().int().positive()).optional(),
   operatingSystem: z.string().max(100).optional(),
   specs: z.string().max(5000).optional(),
   notes: z.string().max(5000).optional(),
   maintenanceIntervalMonths: z.number().int().min(1).max(12).optional(),
   status: z.enum(['active', 'inactive', 'retired']).optional(),
+});
+
+// Maintenance — Printers
+export const createPrinterSchema = z.object({
+  printerName: z.string().min(1).max(100),
+  brandModel: z.string().max(100).optional(),
+  ipAddress: z.string().max(45).optional(),
+  location: z.string().max(100).optional(),
+  foldersSharing: z.boolean().default(false),
+  sharedFolders: z.string().max(5000).optional(),
+  notes: z.string().max(5000).optional(),
+});
+
+export const updatePrinterSchema = z.object({
+  printerName: z.string().min(1).max(100).optional(),
+  brandModel: z.string().max(100).optional(),
+  ipAddress: z.string().max(45).optional(),
+  location: z.string().max(100).optional(),
+  foldersSharing: z.boolean().optional(),
+  sharedFolders: z.string().max(5000).optional(),
+  notes: z.string().max(5000).optional(),
+  status: z.enum(['active', 'retired']).optional(),
 });
 
 // Maintenance — Logs

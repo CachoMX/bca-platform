@@ -12,6 +12,7 @@ export interface User {
   lastname: string;
   email: string;
   role: number;
+  sendEmail: boolean;
   isActive: boolean;
   isPartTime: boolean;
   smsAccess: boolean;
@@ -71,11 +72,24 @@ export interface UpdateSchedulePayload {
 /*  Helpers                                            */
 /* -------------------------------------------------- */
 
+const STATUS_FALLBACKS: Partial<Record<number, string>> = {
+  409: 'Email already in use',
+  403: 'You do not have permission to perform this action',
+  401: 'You must be signed in',
+};
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Request failed (${res.status})`);
+    let message = STATUS_FALLBACKS[res.status] ?? `Request failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.error) message = body.error;
+      else if (body?.message) message = body.message;
+    } catch {
+      // non-JSON body — keep the status-based fallback
+    }
+    throw new Error(message);
   }
   return res.json();
 }

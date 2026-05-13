@@ -46,6 +46,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Load blacklists once before processing
+    const [blockedNames, blockedAreaCodes] = await Promise.all([
+      prisma.blockedName.findMany({ select: { keyword: true } }),
+      prisma.blockedAreaCode.findMany({ select: { areaCode: true } }),
+    ]);
+    const blockedKeywords = blockedNames.map((n) => n.keyword.toLowerCase());
+    const blockedCodes = new Set(blockedAreaCodes.map((c) => c.areaCode));
+
     let imported = 0;
     let skipped = 0;
     const errors: string[] = [];
@@ -78,6 +86,23 @@ export async function POST(request: NextRequest) {
 
         if (digits.length < 10) {
           errors.push(`Row ${rowNum}: Invalid phone number "${phone}"`);
+          skipped++;
+          continue;
+        }
+
+        // Check blocked area code
+        const areaCode = digits.length === 11 ? digits.slice(1, 4) : digits.slice(0, 3);
+        if (blockedCodes.has(areaCode)) {
+          errors.push(`Row ${rowNum}: Blocked area code (${areaCode}) — "${businessName}"`);
+          skipped++;
+          continue;
+        }
+
+        // Check blocked business name keywords
+        const nameLower = businessName.toLowerCase();
+        const matchedKeyword = blockedKeywords.find((kw) => nameLower.includes(kw));
+        if (matchedKeyword) {
+          errors.push(`Row ${rowNum}: Blocked business name keyword "${matchedKeyword}" — "${businessName}"`);
           skipped++;
           continue;
         }
