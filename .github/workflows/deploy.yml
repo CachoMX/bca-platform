@@ -255,6 +255,42 @@ jobs:
           else:
               print('WARNING: @prisma/client not found in pnpm tree!')
 
+          # --- Fix Turbopack hashed module aliases ---
+          # Turbopack in pnpm projects resolves packages to @scope/pkg-HASH IDs.
+          # The standalone doesn't include these hashed aliases; create them from the base packages.
+          chunks_dir = os.path.join(standalone, '.next', 'server', 'chunks')
+          turbopack_aliases = {}  # hashed_id -> base_package_name
+          if os.path.isdir(chunks_dir):
+              for fn in os.listdir(chunks_dir):
+                  if not fn.endswith('.js'):
+                      continue
+                  try:
+                      raw = open(os.path.join(chunks_dir, fn), 'r', encoding='utf-8', errors='ignore').read(500000)
+                      import re as _re
+                      for m in _re.finditer(r'"(@[^"/]+/[^"@/-][^"]+)-([a-f0-9]{8,})"', raw):
+                          hid = m.group(1) + '-' + m.group(2)
+                          turbopack_aliases[hid] = m.group(1)
+                  except Exception as ex:
+                      print(f'  chunk scan error {fn}: {ex}')
+          print(f'Turbopack aliases found: {list(turbopack_aliases.keys())}')
+          for hid, base in turbopack_aliases.items():
+              hid_parts = hid.split('/')
+              base_parts = base.split('/')
+              hid_dst = os.path.join(standalone, 'node_modules', *hid_parts)
+              base_src = os.path.join(standalone, 'node_modules', *base_parts)
+              if not os.path.isdir(base_src):
+                  # Try full project node_modules as fallback
+                  base_src = os.path.join(base, 'node_modules', *base_parts)
+              if os.path.isdir(hid_dst):
+                  print(f'Alias already in standalone: {hid}')
+                  upload_dir(ftp, hid_dst, f'{REMOTE_DIR}/node_modules/{hid}', hid)
+              elif os.path.isdir(base_src):
+                  shutil.copytree(base_src, hid_dst)
+                  print(f'Created alias {hid} -> {base} ({len(os.listdir(hid_dst))} items)')
+                  upload_dir(ftp, hid_dst, f'{REMOTE_DIR}/node_modules/{hid}', hid)
+              else:
+                  print(f'WARNING: base package not found for alias {hid} (tried {base_src})')
+
           # --- Log all .exe and .node files in standalone node_modules (Prisma engines) ---
           for root, dirs, fnames in os.walk(os.path.join(standalone, 'node_modules')):
               for fn in fnames:
