@@ -224,16 +224,42 @@ jobs:
           else:
               print('WARNING: next.js not found locally for explicit upload!')
 
-          # --- Sync Prisma client ---
+          # --- Sync Prisma client (full directory, including subdirs and native binaries) ---
           prisma_pattern = os.path.join(base, 'node_modules', '.pnpm', '@prisma+client@*', 'node_modules', '.prisma', 'client')
           prisma_dirs = glob.glob(prisma_pattern)
           if prisma_dirs:
-              prisma_dst = f'{REMOTE_DIR}/node_modules/.prisma/client'
-              for fname in os.listdir(prisma_dirs[0]):
-                  fpath = os.path.join(prisma_dirs[0], fname)
-                  if os.path.isfile(fpath):
-                      upload_file(ftp, fpath, f'{prisma_dst}/{fname}')
-              print('Prisma client synced')
+              prisma_src = prisma_dirs[0]
+              # Also copy into standalone so it's available at runtime
+              prisma_in_standalone = os.path.join(standalone, 'node_modules', '.prisma', 'client')
+              if os.path.isdir(prisma_in_standalone):
+                  shutil.rmtree(prisma_in_standalone)
+              shutil.copytree(prisma_src, prisma_in_standalone)
+              print(f'Copied .prisma/client to standalone ({len(os.listdir(prisma_src))} items)')
+              upload_dir(ftp, prisma_src, f'{REMOTE_DIR}/node_modules/.prisma/client', '.prisma/client')
+          else:
+              print('WARNING: .prisma/client not found in pnpm tree!')
+
+          # --- Also ensure @prisma/client package is in standalone node_modules ---
+          prisma_pkg_pattern = os.path.join(base, 'node_modules', '.pnpm', '@prisma+client@*', 'node_modules', '@prisma', 'client')
+          prisma_pkg_dirs = glob.glob(prisma_pkg_pattern)
+          if prisma_pkg_dirs:
+              prisma_pkg_src = prisma_pkg_dirs[0]
+              prisma_pkg_dst = os.path.join(standalone, 'node_modules', '@prisma', 'client')
+              if not os.path.isdir(prisma_pkg_dst):
+                  shutil.copytree(prisma_pkg_src, prisma_pkg_dst)
+                  print(f'Copied @prisma/client to standalone')
+                  upload_dir(ftp, prisma_pkg_src, f'{REMOTE_DIR}/node_modules/@prisma/client', '@prisma/client')
+              else:
+                  print('@prisma/client already in standalone, uploading to server...')
+                  upload_dir(ftp, prisma_pkg_dst, f'{REMOTE_DIR}/node_modules/@prisma/client', '@prisma/client')
+          else:
+              print('WARNING: @prisma/client not found in pnpm tree!')
+
+          # --- Log all .exe and .node files in standalone node_modules (Prisma engines) ---
+          for root, dirs, fnames in os.walk(os.path.join(standalone, 'node_modules')):
+              for fn in fnames:
+                  if fn.endswith('.exe') or fn.endswith('.node'):
+                      print(f'Engine found: {os.path.join(root, fn).replace(standalone, "")}')
 
           # --- Upload public ---
           print('Uploading public/...')

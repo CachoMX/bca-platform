@@ -8,6 +8,15 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  // Include Prisma native engine binaries in standalone build (not traced by nft by default)
+  outputFileTracingIncludes: {
+    '/api/**': [
+      './node_modules/.pnpm/**/.prisma/client/**',
+      './node_modules/.pnpm/**/@prisma/client/**',
+      './node_modules/.prisma/client/**',
+      './node_modules/@prisma/client/**',
+    ],
+  },
   headers: async () => [
     {
       source: "/(.*)",
