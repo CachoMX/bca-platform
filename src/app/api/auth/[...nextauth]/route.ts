@@ -1,7 +1,6 @@
-import { handlers } from '@/lib/auth';
-
 async function safeHandler(req: Request, ctx: unknown) {
   try {
+    const { handlers } = await import('@/lib/auth');
     const handler = req.method === 'POST' ? handlers.POST : handlers.GET;
     return await handler(req, ctx as never);
   } catch (err: unknown) {
