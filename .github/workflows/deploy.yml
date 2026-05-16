@@ -166,6 +166,21 @@ jobs:
           print('Deleted. Uploading new .next...')
           upload_dir(ftp, os.path.join(standalone, '.next'), f'{REMOTE_DIR}/.next', '.next')
 
+          # --- Upload node_modules from standalone (contains 'next' and runtime deps) ---
+          print('Uploading node_modules from standalone...')
+          upload_dir(ftp, os.path.join(standalone, 'node_modules'), f'{REMOTE_DIR}/node_modules', 'node_modules')
+
+          # --- Sync Prisma client ---
+          prisma_pattern = os.path.join(base, 'node_modules', '.pnpm', '@prisma+client@*', 'node_modules', '.prisma', 'client')
+          prisma_dirs = glob.glob(prisma_pattern)
+          if prisma_dirs:
+              prisma_dst = f'{REMOTE_DIR}/node_modules/.prisma/client'
+              for fname in os.listdir(prisma_dirs[0]):
+                  fpath = os.path.join(prisma_dirs[0], fname)
+                  if os.path.isfile(fpath):
+                      upload_file(ftp, fpath, f'{prisma_dst}/{fname}')
+              print('Prisma client synced')
+
           # --- Upload public ---
           print('Uploading public/...')
           upload_dir(ftp, os.path.join(base, 'public'), f'{REMOTE_DIR}/public', 'public')
