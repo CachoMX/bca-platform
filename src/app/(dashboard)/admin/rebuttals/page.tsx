@@ -268,6 +268,7 @@ export default function RebuttalsPage() {
                         {r.content.includes('<table') ? (
                           <div
                             className="overflow-x-auto"
+                            suppressHydrationWarning
                             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(r.content) }}
                           />
                         ) : (

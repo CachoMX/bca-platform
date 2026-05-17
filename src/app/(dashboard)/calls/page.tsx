@@ -781,6 +781,7 @@ export default function CallsPage() {
                               {selected.content.includes('<table') ? (
                                 <div
                                   className="overflow-x-auto"
+                                  suppressHydrationWarning
                                   dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selected.content) }}
                                 />
                               ) : (
